@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .page {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .page.active {
+            display: block;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .back-btn {
+            background: #6c757d;
+        }
+        .back-btn:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <h1>Page Navigation Test</h1>
+    
+    <div class="page active" id="main-page">
+        <h2>Main Page</h2>
+        <p>This is the main page. Click the button below to go to the story detail page.</p>
+        <button class="btn" onclick="showStoryDetail()">View Story Detail</button>
+    </div>
+    
+    <div class="page" id="story-detail-page">
+        <h2>Story Detail Page</h2>
+        <p>This is the story detail page. You can see the story content here.</p>
+        <div id="story-content">
+            <h3>Sample Story</h3>
+            <p>This is a sample travel story about visiting Thailand.</p>
+            <p><strong>Country:</strong> Thailand 🇹🇭</p>
+            <p><strong>Date:</strong> January 2024</p>
+            <p><strong>Cities:</strong> Bangkok, Chiang Mai, Phuket</p>
+        </div>
+        <button class="btn back-btn" onclick="backToMain()">← Back to Main</button>
+    </div>
+
+    <script>
+        function showStoryDetail() {
+            document.getElementById('main-page').classList.remove('active');
+            document.getElementById('story-detail-page').classList.add('active');
+        }
+        
+        function backToMain() {
+            document.getElementById('story-detail-page').classList.remove('active');
+            document.getElementById('main-page').classList.add('active');
+        }
+    </script>
+</body>
+</html> 

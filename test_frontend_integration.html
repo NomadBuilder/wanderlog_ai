@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Map Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .loading { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🗺️ Frontend Map Integration Test</h1>
+    <p>Testing connection to the new modular map backend...</p>
+    
+    <div class="test-section">
+        <h3>Test 1: Map Statistics</h3>
+        <button onclick="testMapStatistics()">Test Map Statistics</button>
+        <div id="statsResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 2: Visited Countries</h3>
+        <button onclick="testVisitedCountries()">Test Visited Countries</button>
+        <div id="countriesResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 3: Highlighted Map</h3>
+        <button onclick="testHighlightedMap()">Test Highlighted Map</button>
+        <div id="mapResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 4: All Tests</h3>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="allResults"></div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = 'http://localhost:8080';
+        
+        function showResult(elementId, content, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.className = isSuccess ? 'test-section success' : 'test-section error';
+            element.innerHTML = content;
+        }
+        
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.className = 'test-section loading';
+            element.innerHTML = '<p>⏳ Testing...</p>';
+        }
+        
+        async function testMapStatistics() {
+            showLoading('statsResult');
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_map_statistics' })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('statsResult', `
+                        <h4>✅ Map Statistics Test Passed</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                showResult('statsResult', `
+                    <h4>❌ Map Statistics Test Failed</h4>
+                    <p>Error: ${error.message}</p>
+                `, false);
+            }
+        }
+        
+        async function testVisitedCountries() {
+            showLoading('countriesResult');
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_visited_countries' })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('countriesResult', `
+                        <h4>✅ Visited Countries Test Passed</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                showResult('countriesResult', `
+                    <h4>❌ Visited Countries Test Failed</h4>
+                    <p>Error: ${error.message}</p>
+                `, false);
+            }
+        }
+        
+        async function testHighlightedMap() {
+            showLoading('mapResult');
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_highlighted_map' })
+                });
+                
+                if (response.ok) {
+                    const svgText = await response.text();
+                    const isSVG = svgText.trim().startsWith('<svg');
+                    showResult('mapResult', `
+                        <h4>✅ Highlighted Map Test Passed</h4>
+                        <p>Response length: ${svgText.length} characters</p>
+                        <p>Is SVG: ${isSVG ? 'Yes' : 'No'}</p>
+                        <details>
+                            <summary>View SVG Preview</summary>
+                            <pre>${svgText.substring(0, 500)}...</pre>
+                        </details>
+                    `);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                showResult('mapResult', `
+                    <h4>❌ Highlighted Map Test Failed</h4>
+                    <p>Error: ${error.message}</p>
+                `, false);
+            }
+        }
+        
+        async function runAllTests() {
+            showLoading('allResults');
+            const results = [];
+            
+            // Test 1: Map Statistics
+            try {
+                const statsResponse = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_map_statistics' })
+                });
+                results.push(`✅ Map Statistics: ${statsResponse.ok ? 'PASS' : 'FAIL'}`);
+            } catch (error) {
+                results.push(`❌ Map Statistics: FAIL - ${error.message}`);
+            }
+            
+            // Test 2: Visited Countries
+            try {
+                const countriesResponse = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_visited_countries' })
+                });
+                results.push(`✅ Visited Countries: ${countriesResponse.ok ? 'PASS' : 'FAIL'}`);
+            } catch (error) {
+                results.push(`❌ Visited Countries: FAIL - ${error.message}`);
+            }
+            
+            // Test 3: Highlighted Map
+            try {
+                const mapResponse = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_highlighted_map' })
+                });
+                results.push(`✅ Highlighted Map: ${mapResponse.ok ? 'PASS' : 'FAIL'}`);
+            } catch (error) {
+                results.push(`❌ Highlighted Map: FAIL - ${error.message}`);
+            }
+            
+            const allPassed = results.every(r => r.includes('PASS'));
+            showResult('allResults', `
+                <h4>${allPassed ? '🎉 All Tests Passed!' : '⚠️ Some Tests Failed'}</h4>
+                <ul>${results.map(r => `<li>${r}</li>`).join('')}</ul>
+            `, allPassed);
+        }
+    </script>
+</body>
+</html> 

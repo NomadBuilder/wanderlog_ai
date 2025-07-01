@@ -89,10 +89,68 @@ def wanderlog_ai(request):
         response = make_response('', 204)
         return add_cors_headers(response)
 
+    # Special case: GET request to /stories (for modular frontend compatibility)
+    if request.method == 'GET':
+        # Accept both /stories and /stories/ (trailing slash)
+        if request.path.rstrip('/') == '/stories':
+            try:
+                # For GET requests, we don't need to parse JSON
+                # Just return all stories
+                stories = []
+                if use_cloud_storage and storage_client:
+                    try:
+                        bucket = storage_client.bucket(STORIES_BUCKET)
+                        blobs = bucket.list_blobs(prefix='stories/')
+                        for blob in blobs:
+                            if blob.name.endswith('.json'):
+                                content = blob.download_as_text()
+                                story_data = json.loads(content)
+                                stories.append(story_data)
+                    except Exception as e:
+                        print(f"Error retrieving stories: {e}")
+                else:
+                    # Local storage
+                    try:
+                        for filename in os.listdir(LOCAL_STORAGE_DIR):
+                            if filename.endswith('.json'):
+                                filepath = os.path.join(LOCAL_STORAGE_DIR, filename)
+                                with open(filepath, 'r') as f:
+                                    story_data = json.load(f)
+                                    stories.append(story_data)
+                    except Exception as e:
+                        print(f"Error reading local stories: {e}")
+                response_data = {
+                    "stories": stories,
+                    "count": len(stories),
+                    "success": True
+                }
+                response = make_response(json.dumps(response_data), 200, {'Content-Type': 'application/json'})
+                return add_cors_headers(response)
+            except Exception as e:
+                print(f"Error handling GET /stories: {str(e)}")
+                response = make_response(json.dumps({"stories": [], "count": 0, "error": str(e)}), 500)
+                return add_cors_headers(response)
+        elif request.path == '/' or request.path == '':
+            # Handle root path GET requests (browser navigation)
+            response = make_response(json.dumps({"message": "WanderLog AI API", "status": "running"}), 200)
+            return add_cors_headers(response)
+        else:
+            # Defensive: absolutely never try to parse JSON for any GET endpoint
+            response = make_response(json.dumps({"error": "Not found"}), 404)
+            return add_cors_headers(response)
+
+    # Defensive: absolutely never try to parse JSON for any non-POST request
+    if request.method != 'POST':
+        response = make_response(json.dumps({"error": "POST method required for API actions"}), 405)
+        return add_cors_headers(response)
+
+    # Handle POST requests with JSON body
     try:
         request_json = request.get_json()
+        if not request_json:
+            response = make_response(json.dumps({"error": "Invalid JSON body"}), 400)
+            return add_cors_headers(response)
         action = request_json.get("action", "")
-        
         if action == "suggest_cities":
             return add_cors_headers(suggest_cities(request_json))
         elif action == "generate_memory_prompts":
@@ -126,7 +184,6 @@ def wanderlog_ai(request):
         else:
             response = make_response(json.dumps({"error": "Invalid action"}), 400)
             return add_cors_headers(response)
-
     except Exception as e:
         print(f"🔥 EXCEPTION: {str(e)}")
         response = make_response(json.dumps({"error": str(e)}), 500)
@@ -261,7 +318,7 @@ Example for Kyoto, Japan:
         return response
 
 def generate_narrative(request_json):
-    """Convert user answers into a natural travel story"""
+    """Convert user answers into a natural travel story with proper formatting"""
     city = request_json.get("city", "")
     country = request_json.get("country", "")
     user_answers = request_json.get("user_answers", [])
@@ -286,7 +343,7 @@ def generate_narrative(request_json):
         except:
             date_context = f"**When:** {visit_date}\n"
     
-    # Create a more comprehensive prompt for multiple cities
+    # Create a more comprehensive prompt for multiple cities with better formatting instructions
     if len(cities) > 1:
         cities_text = ", ".join(cities[:-1]) + f" and {cities[-1]}" if len(cities) > 1 else cities[0]
         prompt = f"""
@@ -296,12 +353,22 @@ Keep the tone warm and descriptive but not too formal.
 Mention all the cities and the country naturally throughout the story.  
 If details are missing, do not invent big facts — just keep it realistic and concise.
 
+**IMPORTANT FORMATTING INSTRUCTIONS:**
+- Use double line breaks to separate paragraphs
+- Use bullet points (-) for lists of activities, foods, or highlights
+- Use **bold** for emphasis on key moments or feelings
+- Use *italic* for atmospheric descriptions
+- Use quotes around memorable phrases or local sayings
+- Include section headers like "The Journey", "Arrival", "Exploring", "Highlights", "Memories", "Reflections"
+- Make the story visually appealing with proper spacing and structure
+
 **Cities:** {cities_text}, {country}  
 {date_context}**Trip Notes:** {answers_text}
 
-Write a compelling 3-4 paragraph story that captures the essence of their multi-city adventure, 
+Write a compelling 4-5 paragraph story that captures the essence of their multi-city adventure, 
 flowing naturally from one city to the next while maintaining a cohesive narrative.
 Include the time period naturally in the story if provided.
+Structure the story with clear sections and use formatting to make it visually appealing and easy to read.
 """
     else:
         prompt = f"""
@@ -311,11 +378,21 @@ Keep the tone warm and descriptive but not too formal.
 Mention the city and country naturally.  
 If details are missing, do not invent big facts — just keep it realistic and concise.
 
+**IMPORTANT FORMATTING INSTRUCTIONS:**
+- Use double line breaks to separate paragraphs
+- Use bullet points (-) for lists of activities, foods, or highlights
+- Use **bold** for emphasis on key moments or feelings
+- Use *italic* for atmospheric descriptions
+- Use quotes around memorable phrases or local sayings
+- Include section headers like "Arrival", "Exploring", "Highlights", "Memories", "Reflections"
+- Make the story visually appealing with proper spacing and structure
+
 **City:** {city}, {country}  
 {date_context}**Trip Notes:** {answers_text}
 
-Write a compelling 2-3 paragraph story that captures the essence of their experience.
+Write a compelling 3-4 paragraph story that captures the essence of their experience.
 Include the time period naturally in the story if provided.
+Structure the story with clear sections and use formatting to make it visually appealing and easy to read.
 """
 
     payload = {

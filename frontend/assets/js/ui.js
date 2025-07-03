@@ -22,6 +22,10 @@ class WanderLogUI {
             bio: 'Sharing my travel adventures around the world',
             isPublic: false
         };
+        
+        // Authentication state
+        this.currentUser = null;
+        this.sessionToken = localStorage.getItem('wanderlog_session_token');
         this.countries = [
             'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
             'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
@@ -51,72 +55,37 @@ class WanderLogUI {
         this.init();
     }
 
-    init() {
-        console.log('[UI] 🚀 Initializing WanderLog UI...');
-        
+    async init() {
         // Check if we're in a browser environment
         if (typeof window === 'undefined') {
             console.error('[UI] ❌ Not in browser environment');
             return;
         }
         
-        console.log('[UI] 📋 Starting UI initialization...');
-        console.log('[UI] 🔍 Current step:', this.currentStep);
-        console.log('[UI] 🔍 Current page:', this.currentPage);
-        
         try {
             this.setupEventListeners();
-            console.log('[UI] ✅ Event listeners setup complete');
             
             // Don't load stories during initialization - only load when viewing stories page
             // this.loadSavedStories();
-            console.log('[UI] ✅ Saved stories loading skipped during init');
             
             this.handleURLParams();
-            console.log('[UI] ✅ URL params handled');
-            
             this.initCountryAutocomplete();
-            console.log('[UI] ✅ Country autocomplete initialized');
-            
             this.initializeDateDropdowns();
-            console.log('[UI] ✅ Date dropdowns initialized');
-            
             this.restoreFromURL();
-            console.log('[UI] ✅ URL restoration complete');
+            
+            // Check for existing authentication session
+            await this.checkExistingSession();
             
             this.initializePhotoUpload();
-            console.log('[UI] ✅ Photo upload initialized');
-            
             this.initStoryOptions();
-            console.log('[UI] ✅ Story options initialized');
-            
             this.checkCriticalElements();
-            console.log('[UI] ✅ Critical elements check complete');
             
-            console.log('[UI] 🔍 About to show current step:', this.currentStep);
             this.showCurrentStep();
-            console.log('[UI] ✅ Initial step displayed');
-            
-            console.log('[UI] 🔍 About to show page:', this.currentPage);
             this.showPage(this.currentPage);
-            console.log('[UI] ✅ Initial page displayed:', this.currentPage);
-            
-            // Verify elements are visible
-            const createPage = document.getElementById('createPage');
-            const step1Content = document.getElementById('step1Content');
-            console.log('[UI] 🔍 createPage element:', createPage ? 'found' : 'NOT FOUND');
-            console.log('[UI] 🔍 createPage classes:', createPage ? createPage.className : 'N/A');
-            console.log('[UI] 🔍 createPage display:', createPage ? window.getComputedStyle(createPage).display : 'N/A');
-            console.log('[UI] 🔍 step1Content element:', step1Content ? 'found' : 'NOT FOUND');
-            console.log('[UI] 🔍 step1Content classes:', step1Content ? step1Content.className : 'N/A');
-            console.log('[UI] 🔍 step1Content display:', step1Content ? window.getComputedStyle(step1Content).display : 'N/A');
-            
-            console.log('[UI] 🎉 UI initialization complete!');
             
             // Final check - hide error banner if it's showing
             const errorBanner = document.getElementById('uiErrorBanner');
             if (errorBanner && errorBanner.style.display !== 'none') {
-                console.log('[UI] 🔧 Hiding error banner');
                 errorBanner.style.display = 'none';
             }
             
@@ -127,8 +96,6 @@ class WanderLogUI {
     }
 
     checkCriticalElements() {
-        console.log('[UI] 🔍 Checking critical UI elements...');
-        
         // List of required form fields and containers
         const requiredIds = [
             'countryInput', 'countryDropdown', 'countryMonth', 'countryYear',
@@ -138,27 +105,19 @@ class WanderLogUI {
         ];
         
         const missingElements = [];
-        const foundElements = [];
         
         requiredIds.forEach(id => {
             const element = document.getElementById(id);
-            if (element) {
-                foundElements.push(id);
-                console.log(`[UI] ✅ Found element: ${id}`);
-            } else {
+            if (!element) {
                 missingElements.push(id);
                 console.error(`[UI] ❌ Missing element: ${id}`);
             }
         });
         
-        console.log(`[UI] 📊 Element check complete: ${foundElements.length} found, ${missingElements.length} missing`);
-        
         if (missingElements.length > 0) {
             const errorMsg = `Missing critical elements: ${missingElements.join(', ')}`;
             console.error('[UI] ❌', errorMsg);
             this.showErrorBanner(errorMsg);
-        } else {
-            console.log('[UI] ✅ All critical elements found!');
         }
         
         // Check if global functions are available
@@ -166,15 +125,11 @@ class WanderLogUI {
     }
 
     checkGlobalFunctions() {
-        console.log('[UI] 🔍 Checking global functions...');
-        
         const requiredFunctions = ['showPage', 'nextStep', 'suggestCities', 'generateMemoryPrompts'];
         const missingFunctions = [];
         
         requiredFunctions.forEach(funcName => {
-            if (typeof window[funcName] === 'function') {
-                console.log(`[UI] ✅ Global function available: ${funcName}`);
-            } else {
+            if (typeof window[funcName] !== 'function') {
                 missingFunctions.push(funcName);
                 console.error(`[UI] ❌ Missing global function: ${funcName}`);
             }
@@ -184,8 +139,6 @@ class WanderLogUI {
             const errorMsg = `Missing global functions: ${missingFunctions.join(', ')}`;
             console.error('[UI] ❌', errorMsg);
             this.showErrorBanner(errorMsg);
-        } else {
-            console.log('[UI] ✅ All global functions available!');
         }
     }
 
@@ -195,19 +148,16 @@ class WanderLogUI {
         if (banner) {
             banner.textContent = 'UI Error: ' + message;
             banner.style.display = 'block';
-            console.log('[UI] ✅ Error banner displayed');
         } else {
             console.error('[UI] ❌ Error banner element not found');
         }
     }
 
     setupEventListeners() {
-        console.log('[UI] Setting up event listeners...');
         // Create story form
         const createForm = document.getElementById('createForm');
         if (createForm) {
             createForm.addEventListener('submit', (e) => this.handleCreateStory(e));
-            console.log('[UI] Attached submit event to #createForm');
         } else {
             console.warn('[UI] #createForm not found');
         }
@@ -216,7 +166,6 @@ class WanderLogUI {
         const searchInput = document.getElementById('storySearchInput');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => this.handleStorySearch(e));
-            console.log('[UI] Attached input event to #storySearchInput');
         } else {
             console.warn('[UI] #storySearchInput not found');
         }
@@ -225,14 +174,12 @@ class WanderLogUI {
         const countryInput = document.getElementById('countryInput');
         if (countryInput) {
             countryInput.addEventListener('input', () => this.updateURL());
-            console.log('[UI] Attached input event to #countryInput');
         } else {
             console.warn('[UI] #countryInput not found');
         }
 
         // Handle browser back/forward
         window.addEventListener('popstate', (e) => this.handlePopState(e));
-        console.log('[UI] Attached popstate event');
     }
 
     // Multi-step form navigation
@@ -461,7 +408,9 @@ class WanderLogUI {
         // Load data for specific pages
         if (pageName === 'stories') {
             this.loadSavedStories();
+            this.initSearch();
         } else if (pageName === 'map') {
+            this.loadSavedStories(); // <-- Add this line
             this.loadMapData();
         } else if (pageName === 'profile') {
             this.loadProfileData();
@@ -472,6 +421,7 @@ class WanderLogUI {
         // Load map data if map module is available
         if (window.wanderLogMap) {
             await window.wanderLogMap.loadVisitedCountries();
+            this.updateDashboardCounters();
         }
     }
 
@@ -601,7 +551,7 @@ class WanderLogUI {
         this.updateStepProgress(1, 'loading');
         
         try {
-            const response = await fetch('http://localhost:8080', {
+            const response = await fetch('http://localhost:8080/api/suggest_cities', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -790,7 +740,7 @@ class WanderLogUI {
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
                 
                 try {
-                    const response = await fetch('http://localhost:8080', {
+                    const response = await fetch('http://localhost:8080/api/generate_memory_prompts', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -903,7 +853,7 @@ class WanderLogUI {
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
         try {
-            const response = await fetch('http://localhost:8080', {
+            const response = await fetch('http://localhost:8080/api/generate_memory_prompts', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -975,7 +925,7 @@ class WanderLogUI {
             const visitDate = countryMonth && countryYear && countryMonth.value && countryYear.value ? 
                 `${countryMonth.value}/${countryYear.value}` : null;
             
-            const response = await fetch('http://localhost:8080', {
+            const response = await fetch('http://localhost:8080/api/generate_narrative', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1079,7 +1029,7 @@ class WanderLogUI {
         this.showLoading();
 
         try {
-            const response = await fetch('http://localhost:8080', {
+            const response = await fetch('http://localhost:8080/api/change_style', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1277,7 +1227,7 @@ class WanderLogUI {
                 style: this.currentStyle
             };
             
-            const response = await fetch('http://localhost:8080', {
+            const response = await fetch('http://localhost:8080/api/save_story', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1546,7 +1496,7 @@ class WanderLogUI {
     initSearch() {
         const searchInput = document.getElementById('storySearchInput');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => this.handleStorySearch(e));
+            searchInput.addEventListener('input', (e) => this.filterStories());
         }
     }
 
@@ -1564,10 +1514,9 @@ class WanderLogUI {
     async loadSavedStories() {
         this.showLoading('Loading your stories...');
         try {
-            const response = await fetch('http://localhost:8080', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'get_stories' })
+            const response = await fetch('http://localhost:8080/stories', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
             });
             const data = await response.json();
             if (response.ok && data.stories) {
@@ -1588,6 +1537,7 @@ class WanderLogUI {
             this.displayEmptyState();
         } finally {
             this.hideLoading();
+            this.updateDashboardCounters();
         }
     }
 
@@ -1670,6 +1620,10 @@ class WanderLogUI {
                         <button class="btn btn-share btn-small" onclick="event.stopPropagation(); shareCountryStories('${country}')">
                             <i class="fas fa-share-alt"></i>
                             Share
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteCountryStories('${country}')" title="Delete all stories for ${country}">
+                            <i class="fas fa-trash"></i>
+                            Delete
                         </button>
                     </div>
                 </div>
@@ -1895,6 +1849,49 @@ class WanderLogUI {
         }
     }
 
+    // Delete all stories for a country
+    async deleteCountryStories(country) {
+        const countryStories = this.stories.filter(story => story.country === country);
+        if (countryStories.length === 0) {
+            this.showMessage('No stories found for this country.');
+            return;
+        }
+        
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete all ${countryStories.length} stories for ${country}? This action cannot be undone.`);
+        if (!confirmed) {
+            return;
+        }
+        
+        this.showLoading('Deleting stories...');
+        try {
+            const response = await fetch('http://localhost:8080/api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'delete_stories_by_country',
+                    country_name: country
+                })
+            });
+            
+            const data = await response.json();
+            if (response.ok && data.success) {
+                this.showMessage(`Successfully deleted ${data.deleted_count} stories for ${country}`, 'success');
+                // Reload stories to update the display
+                await this.loadSavedStories();
+            } else {
+                this.showMessage(data.error || 'Failed to delete stories.');
+            }
+        } catch (error) {
+            console.error('Error deleting stories:', error);
+            this.showMessage('Network error. Please try again.');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
     // Filter stories
     filterStories() {
         const searchInput = document.getElementById('storySearchInput');
@@ -1963,6 +1960,178 @@ class WanderLogUI {
             this.selectedCities = selectedCities.split(',').map(city => ({ city: city.trim(), activities: [] }));
         }
     }
+
+    // === 🔐 AUTHENTICATION METHODS ===
+    
+    async checkExistingSession() {
+        if (!this.sessionToken) {
+            this.updateAuthUI(false);
+            return;
+        }
+        
+        try {
+            const response = await fetch('http://localhost:8080/api/validate_session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'validate_session',
+                    session_token: this.sessionToken
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.valid && data.user) {
+                this.currentUser = data.user;
+                this.updateAuthUI(true);
+                console.log('[Auth] ✅ Session restored for:', this.currentUser.name);
+            } else {
+                // Invalid session, clear it
+                localStorage.removeItem('wanderlog_session_token');
+                this.sessionToken = null;
+                this.currentUser = null;
+                this.updateAuthUI(false);
+                console.log('[Auth] ❌ Invalid session, cleared');
+            }
+        } catch (error) {
+            console.error('[Auth] Error validating session:', error);
+            this.updateAuthUI(false);
+        }
+    }
+    
+    updateAuthUI(isLoggedIn) {
+        const guestMenu = document.getElementById('profileMenuGuest');
+        const loggedInMenu = document.getElementById('profileMenuLoggedIn');
+        const profileName = document.getElementById('profileMenuName');
+        const profileEmail = document.getElementById('profileMenuEmail');
+        
+        if (isLoggedIn && this.currentUser) {
+            // Show logged-in state
+            if (guestMenu) guestMenu.style.display = 'none';
+            if (loggedInMenu) loggedInMenu.style.display = 'block';
+            if (profileName) profileName.textContent = this.currentUser.name;
+            if (profileEmail) profileEmail.textContent = this.currentUser.email;
+        } else {
+            // Show guest state
+            if (guestMenu) guestMenu.style.display = 'block';
+            if (loggedInMenu) loggedInMenu.style.display = 'none';
+        }
+    }
+    
+    async register(email, password, name) {
+        try {
+            const response = await fetch('http://localhost:8080/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'register',
+                    email: email,
+                    password: password,
+                    name: name
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Auto-login after successful registration
+                return await this.login(email, password);
+            } else {
+                return { success: false, error: data.error };
+            }
+        } catch (error) {
+            console.error('[Auth] Registration error:', error);
+            return { success: false, error: 'Network error. Please try again.' };
+        }
+    }
+    
+    async login(email, password) {
+        try {
+            const response = await fetch('http://localhost:8080/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'login',
+                    email: email,
+                    password: password
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.sessionToken = data.session_token;
+                this.currentUser = data.user;
+                localStorage.setItem('wanderlog_session_token', this.sessionToken);
+                this.updateAuthUI(true);
+                console.log('[Auth] ✅ Logged in as:', this.currentUser.name);
+                return { success: true };
+            } else {
+                return { success: false, error: data.error };
+            }
+        } catch (error) {
+            console.error('[Auth] Login error:', error);
+            return { success: false, error: 'Network error. Please try again.' };
+        }
+    }
+    
+    async logout() {
+        try {
+            if (this.sessionToken) {
+                await fetch('http://localhost:8080/api/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'logout',
+                        session_token: this.sessionToken
+                    })
+                });
+            }
+        } catch (error) {
+            console.error('[Auth] Logout error:', error);
+        } finally {
+            // Clear local state regardless of API call result
+            localStorage.removeItem('wanderlog_session_token');
+            this.sessionToken = null;
+            this.currentUser = null;
+            this.updateAuthUI(false);
+            console.log('[Auth] ✅ Logged out');
+        }
+    }
+
+    // Add this function to update dashboard counters
+    updateDashboardCounters() {
+        // Countries visited: count unique countries in stories
+        let countriesVisited = 0;
+        if (this.stories) {
+            countriesVisited = new Set(this.stories.map(s => s.country).filter(Boolean)).size;
+        }
+        // Stories created
+        const storiesCreated = this.stories ? this.stories.length : 0;
+        // Cities explored
+        let citiesExplored = 0;
+        if (this.stories) {
+            const allCities = [];
+            this.stories.forEach(story => {
+                if (Array.isArray(story.cities)) {
+                    allCities.push(...story.cities);
+                } else if (story.city) {
+                    allCities.push(story.city);
+                }
+            });
+            citiesExplored = new Set(allCities.filter(Boolean)).size;
+        }
+        // Update DOM with correct IDs
+        const countriesElem = document.getElementById('totalCountries');
+        const storiesElem = document.getElementById('totalStories');
+        const citiesElem = document.getElementById('totalCities');
+        if (countriesElem) countriesElem.textContent = countriesVisited;
+        if (storiesElem) storiesElem.textContent = storiesCreated;
+        if (citiesElem) citiesElem.textContent = citiesExplored;
+    }
+
+    // Call this at the end of loadSavedStories and after map.loadVisitedCountries
+    // ... existing code ...
 }
 
 // Global Functions for HTML onclick handlers
@@ -2206,6 +2375,12 @@ function shareCountryStories(country) {
     }
 }
 
+function deleteCountryStories(country) {
+    if (window.wanderLogApp && window.wanderLogApp.ui) {
+        window.wanderLogApp.ui.deleteCountryStories(country);
+    }
+}
+
 function filterStories() {
     if (window.wanderLogApp && window.wanderLogApp.ui) {
         window.wanderLogApp.ui.filterStories();
@@ -2217,6 +2392,187 @@ function clearSearch() {
         window.wanderLogApp.ui.clearSearch();
     }
 }
+
+// === 🔐 AUTHENTICATION GLOBAL FUNCTIONS ===
+function toggleProfileMenu() {
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+    }
+}
+
+function showAuthModal(mode) {
+    const modal = document.getElementById('authModal');
+    const title = document.getElementById('authModalTitle');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    
+    if (mode === 'login') {
+        title.textContent = 'Sign In';
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+    } else {
+        title.textContent = 'Sign Up';
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+    }
+    
+    modal.style.display = 'flex';
+    
+    // Hide profile dropdown
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+}
+
+function closeAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    // Clear form errors
+    const loginError = document.getElementById('loginError');
+    const registerError = document.getElementById('registerError');
+    if (loginError) loginError.style.display = 'none';
+    if (registerError) registerError.style.display = 'none';
+    
+    // Reset form fields
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('registerName').value = '';
+    document.getElementById('registerEmail').value = '';
+    document.getElementById('registerPassword').value = '';
+}
+
+function switchAuthMode(mode) {
+    showAuthModal(mode);
+}
+
+async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorDiv = document.getElementById('loginError');
+    const btn = document.getElementById('loginBtn');
+    const btnText = btn.querySelector('.btn-text');
+    const btnSpinner = btn.querySelector('.btn-spinner');
+    
+    // Hide previous errors
+    errorDiv.style.display = 'none';
+    
+    // Validate inputs
+    if (!email || !password) {
+        errorDiv.textContent = 'Please fill in all fields';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // Show loading state
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnSpinner.style.display = 'inline';
+    
+    try {
+        const result = await window.wanderLogApp.ui.login(email, password);
+        
+        if (result.success) {
+            closeAuthModal();
+            window.wanderLogApp.ui.showMessage('Welcome back!', 'success');
+        } else {
+            errorDiv.textContent = result.error;
+            errorDiv.style.display = 'block';
+        }
+    } catch (error) {
+        errorDiv.textContent = 'An error occurred. Please try again.';
+        errorDiv.style.display = 'block';
+    } finally {
+        // Reset button state
+        btn.disabled = false;
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+    }
+}
+
+async function handleRegister() {
+    const name = document.getElementById('registerName').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const errorDiv = document.getElementById('registerError');
+    const btn = document.getElementById('registerBtn');
+    const btnText = btn.querySelector('.btn-text');
+    const btnSpinner = btn.querySelector('.btn-spinner');
+    
+    // Hide previous errors
+    errorDiv.style.display = 'none';
+    
+    // Validate inputs
+    if (!name || !email || !password) {
+        errorDiv.textContent = 'Please fill in all fields';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    if (password.length < 6) {
+        errorDiv.textContent = 'Password must be at least 6 characters';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    if (!email.includes('@')) {
+        errorDiv.textContent = 'Please enter a valid email address';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // Show loading state
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnSpinner.style.display = 'inline';
+    
+    try {
+        const result = await window.wanderLogApp.ui.register(email, password, name);
+        
+        if (result.success) {
+            closeAuthModal();
+            window.wanderLogApp.ui.showMessage('Account created successfully! Welcome to WanderLog!', 'success');
+        } else {
+            errorDiv.textContent = result.error;
+            errorDiv.style.display = 'block';
+        }
+    } catch (error) {
+        errorDiv.textContent = 'An error occurred. Please try again.';
+        errorDiv.style.display = 'block';
+    } finally {
+        // Reset button state
+        btn.disabled = false;
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+    }
+}
+
+async function handleLogout() {
+    if (window.wanderLogApp && window.wanderLogApp.ui) {
+        await window.wanderLogApp.ui.logout();
+        window.wanderLogApp.ui.showMessage('You have been signed out.', 'success');
+        
+        // Hide profile dropdown
+        const dropdown = document.getElementById('profileDropdown');
+        if (dropdown) {
+            dropdown.classList.remove('show');
+        }
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const profileIcon = document.querySelector('.profile-icon');
+    const dropdown = document.getElementById('profileDropdown');
+    
+    if (profileIcon && dropdown && !profileIcon.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
 
 // Export for use in other modules
 window.WanderLogUI = WanderLogUI;
@@ -2513,3 +2869,14 @@ function validateStory(story) {
     
     return { valid: true, errors: [] };
 } 
+
+
+// Global function for memory prompts (must be defined before UI checks)
+function generateMemoryPrompts() {
+    if (window.wanderLogApp && window.wanderLogApp.ui && window.wanderLogApp.ui.generateMemoryPrompts) {
+        window.wanderLogApp.ui.generateMemoryPrompts();
+    } else {
+        console.warn('[UI] generateMemoryPrompts not available');
+    }
+}
+window.generateMemoryPrompts = generateMemoryPrompts;

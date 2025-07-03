@@ -54,6 +54,7 @@ class SVGMapProcessor:
     
     def _map_element_to_country(self, element_id: str) -> Optional[str]:
         """Map SVG element ID to country ISO code"""
+        # The SVG uses ISO codes directly as IDs, so we can use them as-is
         # Common SVG element ID patterns
         element_mappings = {
             # North America
@@ -92,6 +93,25 @@ class SVGMapProcessor:
             'dk': 'DK', 'denmark': 'DK',
             'is': 'IS', 'iceland': 'IS',
             'ie': 'IE', 'ireland': 'IE',
+            'hr': 'HR', 'croatia': 'HR',
+            'si': 'SI', 'slovenia': 'SI',
+            'rs': 'RS', 'serbia': 'RS',
+            'me': 'ME', 'montenegro': 'ME',
+            'mk': 'MK', 'north-macedonia': 'MK', 'macedonia': 'MK',
+            'al': 'AL', 'albania': 'AL',
+            'ba': 'BA', 'bosnia-herzegovina': 'BA', 'bosnia': 'BA',
+            'md': 'MD', 'moldova': 'MD',
+            'ge': 'GE', 'georgia': 'GE',
+            'am': 'AM', 'armenia': 'AM',
+            'az': 'AZ', 'azerbaijan': 'AZ',
+            'cy': 'CY', 'cyprus': 'CY',
+            'mt': 'MT', 'malta': 'MT',
+            'lu': 'LU', 'luxembourg': 'LU',
+            'li': 'LI', 'liechtenstein': 'LI',
+            'mc': 'MC', 'monaco': 'MC',
+            'sm': 'SM', 'san-marino': 'SM',
+            'va': 'VA', 'vatican': 'VA', 'vatican-city': 'VA',
+            'ad': 'AD', 'andorra': 'AD',
             
             # Asia
             'cn': 'CN', 'china': 'CN', 'mainland-china': 'CN',
@@ -137,6 +157,13 @@ class SVGMapProcessor:
             'qa': 'QA', 'qatar': 'QA',
             'kw': 'KW', 'kuwait': 'KW',
             'bh': 'BH', 'bahrain': 'BH',
+            'mv': 'MV', 'maldives': 'MV',
+            'bn': 'BN', 'brunei': 'BN',
+            'tl': 'TL', 'east-timor': 'TL', 'timor-leste': 'TL',
+            'er': 'ER', 'eritrea': 'ER',
+            'dj': 'DJ', 'djibouti': 'DJ',
+            'so': 'SO', 'somalia': 'SO',
+            '_somaliland': 'SO', 'somaliland': 'SO',
             
             # Africa
             'za': 'ZA', 'south-africa': 'ZA',
@@ -146,6 +173,7 @@ class SVGMapProcessor:
             'tn': 'TN', 'tunisia': 'TN',
             'ly': 'LY', 'libya': 'LY',
             'sd': 'SD', 'sudan': 'SD',
+            'ss': 'SS', 'south-sudan': 'SS',
             'et': 'ET', 'ethiopia': 'ET',
             'ke': 'KE', 'kenya': 'KE',
             'tz': 'TZ', 'tanzania': 'TZ',
@@ -169,6 +197,26 @@ class SVGMapProcessor:
             'mg': 'MG', 'madagascar': 'MG',
             'mu': 'MU', 'mauritius': 'MU',
             'sc': 'SC', 'seychelles': 'SC',
+            'km': 'KM', 'comoros': 'KM',
+            'bi': 'BI', 'burundi': 'BI',
+            'rw': 'RW', 'rwanda': 'RW',
+            'bw': 'BW', 'botswana': 'BW',
+            'ls': 'LS', 'lesotho': 'LS',
+            'sz': 'SZ', 'eswatini': 'SZ', 'swaziland': 'SZ',
+            'st': 'ST', 'sao-tome-principe': 'ST',
+            'gw': 'GW', 'guinea-bissau': 'GW',
+            'gn': 'GN', 'guinea': 'GN',
+            'sl': 'SL', 'sierra-leone': 'SL',
+            'lr': 'LR', 'liberia': 'LR',
+            'ci': 'CI', 'ivory-coast': 'CI', 'cote-divoire': 'CI',
+            'bf': 'BF', 'burkina-faso': 'BF',
+            'tg': 'TG', 'togo': 'TG',
+            'bj': 'BJ', 'benin': 'BJ',
+            'gm': 'GM', 'gambia': 'GM',
+            'cv': 'CV', 'cape-verde': 'CV',
+            'mr': 'MR', 'mauritania': 'MR',
+            'gq': 'GQ', 'equatorial-guinea': 'GQ',
+            'cf': 'CF', 'central-african-republic': 'CF',
             
             # Oceania
             'au': 'AU', 'australia': 'AU',
@@ -179,6 +227,7 @@ class SVGMapProcessor:
             'vu': 'VU', 'vanuatu': 'VU',
             'nc': 'NC', 'new-caledonia': 'NC',
             'pf': 'PF', 'french-polynesia': 'PF',
+            'gl': 'GL', 'greenland': 'GL',
             
             # South America
             'br': 'BR', 'brazil': 'BR',
@@ -195,20 +244,45 @@ class SVGMapProcessor:
             'sr': 'SR', 'suriname': 'SR',
             'gf': 'GF', 'french-guiana': 'GF',
             'fk': 'FK', 'falkland-islands': 'FK',
+            
+            # Caribbean
+            'cu': 'CU', 'cuba': 'CU',
+            'jm': 'JM', 'jamaica': 'JM',
+            'ht': 'HT', 'haiti': 'HT',
+            'do': 'DO', 'dominican-republic': 'DO',
+            'pr': 'PR', 'puerto-rico': 'PR',
+            'bs': 'BS', 'bahamas': 'BS',
+            'bb': 'BB', 'barbados': 'BB',
+            'tt': 'TT', 'trinidad-tobago': 'TT',
+            'gd': 'GD', 'grenada': 'GD',
+            'lc': 'LC', 'st-lucia': 'LC',
+            'vc': 'VC', 'st-vincent-grenadines': 'VC',
+            'ag': 'AG', 'antigua-barbuda': 'AG',
+            'kn': 'KN', 'st-kitts-nevis': 'KN',
+            'dm': 'DM', 'dominica': 'DM',
+            
+            # Central America
+            'gt': 'GT', 'guatemala': 'GT',
+            'bz': 'BZ', 'belize': 'BZ',
+            'hn': 'HN', 'honduras': 'HN',
+            'sv': 'SV', 'el-salvador': 'SV',
+            'ni': 'NI', 'nicaragua': 'NI',
+            'cr': 'CR', 'costa-rica': 'CR',
+            'pa': 'PA', 'panama': 'PA',
         }
         
         # Normalize element ID for matching
-        normalized_id = element_id.lower().replace('_', '-').replace(' ', '-')
+        normalized_id = element_id.lower().strip()
         
-        # Direct match
+        # First, check if the element ID is already a valid ISO code
+        if normalized_id in element_mappings.values():
+            return normalized_id.upper()
+        
+        # Then check if it matches any of the mapped names
         if normalized_id in element_mappings:
             return element_mappings[normalized_id]
         
-        # Partial match
-        for key, value in element_mappings.items():
-            if key in normalized_id or normalized_id in key:
-                return value
-        
+        # If not found, return None
         return None
     
     def highlight_countries(self, visited_countries: List[str]) -> str:

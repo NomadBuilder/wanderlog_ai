@@ -14,7 +14,7 @@ BACKEND_URL = 'http://localhost:8080'
 @app.route('/')
 def index():
     """Serve the modular WanderLog AI application"""
-    return send_from_directory('.', 'index.html')
+    return send_from_directory('frontend', 'index.html')
 
 @app.route('/<path:filename>')
 def serve_static(filename):
@@ -28,7 +28,15 @@ def serve_static(filename):
         return jsonify({'error': 'File type not allowed'}), 403
     
     # Serve the file
-    return send_from_directory('.', filename)
+    return send_from_directory('frontend', filename)
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory('frontend/assets', filename)
+
+@app.route('/test/<path:filename>')
+def serve_test(filename):
+    return send_from_directory('frontend/test', filename)
 
 @app.route('/api/<path:endpoint>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 def proxy_api(endpoint):
@@ -51,7 +59,7 @@ def proxy_api(endpoint):
             data=data,
             headers=headers,
             params=request.args,
-            timeout=30
+            timeout=60
         )
         
         # Return backend response
@@ -77,7 +85,7 @@ def proxy_stories():
                 url=backend_url,
                 headers=headers,
                 params=request.args,
-                timeout=30
+                timeout=60
             )
             
             # Return backend response
@@ -110,7 +118,7 @@ def proxy_stories():
                 url=backend_url,
                 data=data,
                 headers=headers,
-                timeout=30
+                timeout=60
             )
             
             # Return backend response

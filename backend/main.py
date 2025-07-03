@@ -6,9 +6,13 @@ import requests
 from datetime import datetime
 from flask import make_response, send_from_directory
 import uuid
+import sqlite3
+import hashlib
+import secrets
+from datetime import datetime, timedelta
 
 # === 🗺️ MAP INTEGRATION ===
-from map_integration import MapIntegration
+from utils.map_integration import *
 
 # Initialize map integration (do this once at startup)
 map_integration = MapIntegration()
@@ -41,9 +45,335 @@ except Exception as e:
     use_cloud_storage = False
 
 # Local storage directory
-LOCAL_STORAGE_DIR = "local_stories"
+LOCAL_STORAGE_DIR = "data/stories"
 if not os.path.exists(LOCAL_STORAGE_DIR):
     os.makedirs(LOCAL_STORAGE_DIR)
+
+# === 🔐 USER DATABASE SETUP ===
+DB_PATH = "wanderlog_users.db"
+
+def init_database():
+    """Initialize SQLite database with user tables"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Users table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
+        )
+    ''')
+    
+    # User sessions table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            session_token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # User preferences table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_preferences (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id),
+            default_story_length TEXT DEFAULT 'detailed',
+            default_story_style TEXT DEFAULT 'original',
+            public_profile BOOLEAN DEFAULT FALSE
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("✅ User database initialized")
+
+# Initialize database on startup
+init_database()
+
+# === 🔐 AUTHENTICATION HELPER FUNCTIONS ===
+def hash_password(password):
+    """Hash a password with salt"""
+    salt = secrets.token_hex(16)
+    pwd_hash = hashlib.sha256((password + salt).encode()).hexdigest()
+    return f"{salt}:{pwd_hash}"
+
+def verify_password(password, stored_hash):
+    """Verify a password against stored hash"""
+    try:
+        salt, pwd_hash = stored_hash.split(':')
+        return hashlib.sha256((password + salt).encode()).hexdigest() == pwd_hash
+    except:
+        return False
+
+def generate_session_token():
+    """Generate a secure session token"""
+    return secrets.token_urlsafe(32)
+
+def create_user(email, password, name):
+    """Create a new user account"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Check if user already exists
+        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        if cursor.fetchone():
+            conn.close()
+            return {"success": False, "error": "Email already registered"}
+        
+        # Create user
+        password_hash = hash_password(password)
+        cursor.execute("""
+            INSERT INTO users (email, password_hash, name) 
+            VALUES (?, ?, ?)
+        """, (email, password_hash, name))
+        
+        user_id = cursor.lastrowid
+        
+        # Create default preferences
+        cursor.execute("""
+            INSERT INTO user_preferences (user_id) VALUES (?)
+        """, (user_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True, 
+            "user_id": user_id,
+            "message": "Account created successfully"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def authenticate_user(email, password):
+    """Authenticate user and create session"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Get user
+        cursor.execute("""
+            SELECT id, password_hash, name FROM users WHERE email = ?
+        """, (email,))
+        user = cursor.fetchone()
+        
+        if not user or not verify_password(password, user[1]):
+            conn.close()
+            return {"success": False, "error": "Invalid email or password"}
+        
+        user_id, _, name = user
+        
+        # Create session
+        session_token = generate_session_token()
+        expires_at = datetime.now() + timedelta(days=30)  # 30 day session
+        
+        cursor.execute("""
+            INSERT INTO user_sessions (user_id, session_token, expires_at)
+            VALUES (?, ?, ?)
+        """, (user_id, session_token, expires_at))
+        
+        # Update last login
+        cursor.execute("""
+            UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
+        """, (user_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "session_token": session_token,
+            "user": {
+                "id": user_id,
+                "email": email,
+                "name": name
+            }
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def validate_session(session_token):
+    """Validate session token and return user info"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT s.user_id, u.email, u.name 
+            FROM user_sessions s 
+            JOIN users u ON s.user_id = u.id 
+            WHERE s.session_token = ? AND s.expires_at > CURRENT_TIMESTAMP
+        """, (session_token,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return {
+                "valid": True,
+                "user": {
+                    "id": result[0],
+                    "email": result[1],
+                    "name": result[2]
+                }
+            }
+        else:
+            return {"valid": False}
+    except Exception as e:
+        return {"valid": False, "error": str(e)}
+
+def logout_user(session_token):
+    """Logout user by removing session"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user_sessions WHERE session_token = ?", (session_token,))
+        conn.commit()
+        conn.close()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# === 🔐 AUTHENTICATION ENDPOINT HANDLERS ===
+def handle_register(request_json):
+    """Handle user registration"""
+    email = request_json.get("email", "").strip().lower()
+    password = request_json.get("password", "")
+    name = request_json.get("name", "").strip()
+    
+    # Basic validation
+    if not email or "@" not in email:
+        response = make_response(json.dumps({"success": False, "error": "Valid email required"}), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    if len(password) < 6:
+        response = make_response(json.dumps({"success": False, "error": "Password must be at least 6 characters"}), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+        
+    if not name:
+        response = make_response(json.dumps({"success": False, "error": "Name is required"}), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    # Create user
+    result = create_user(email, password, name)
+    
+    if result["success"]:
+        response = make_response(json.dumps(result), 201)
+    else:
+        status_code = 409 if "already registered" in result["error"] else 400
+        response = make_response(json.dumps(result), status_code)
+    
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+def handle_login(request_json):
+    """Handle user login"""
+    email = request_json.get("email", "").strip().lower()
+    password = request_json.get("password", "")
+    
+    if not email or not password:
+        response = make_response(json.dumps({"success": False, "error": "Email and password required"}), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    # Authenticate user
+    result = authenticate_user(email, password)
+    
+    if result["success"]:
+        response = make_response(json.dumps(result), 200)
+    else:
+        response = make_response(json.dumps(result), 401)
+    
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+def handle_logout(request_json):
+    """Handle user logout"""
+    session_token = request_json.get("session_token", "")
+    
+    if not session_token:
+        response = make_response(json.dumps({"success": False, "error": "Session token required"}), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    result = logout_user(session_token)
+    response = make_response(json.dumps(result), 200)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+def handle_validate_session(request_json):
+    """Handle session validation"""
+    session_token = request_json.get("session_token", "")
+    
+    if not session_token:
+        response = make_response(json.dumps({"valid": False, "error": "Session token required"}), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    result = validate_session(session_token)
+    response = make_response(json.dumps(result), 200)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+def handle_get_profile(request_json):
+    """Handle get user profile"""
+    session_token = request_json.get("session_token", "")
+    
+    if not session_token:
+        response = make_response(json.dumps({"success": False, "error": "Session token required"}), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    # Validate session
+    session_result = validate_session(session_token)
+    if not session_result.get("valid"):
+        response = make_response(json.dumps({"success": False, "error": "Invalid session"}), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    
+    user = session_result["user"]
+    
+    # Get user preferences
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT default_story_length, default_story_style, public_profile 
+            FROM user_preferences WHERE user_id = ?
+        """, (user["id"],))
+        prefs = cursor.fetchone()
+        conn.close()
+        
+        if prefs:
+            user["preferences"] = {
+                "default_story_length": prefs[0],
+                "default_story_style": prefs[1], 
+                "public_profile": bool(prefs[2])
+            }
+        else:
+            user["preferences"] = {
+                "default_story_length": "detailed",
+                "default_story_style": "original",
+                "public_profile": False
+            }
+        
+        response = make_response(json.dumps({"success": True, "user": user}), 200)
+    except Exception as e:
+        response = make_response(json.dumps({"success": False, "error": str(e)}), 500)
+    
+    response.headers['Content-Type'] = 'application/json'
+    return response
 
 # Helper to add CORS headers to all responses
 def add_cors_headers(response):
@@ -163,6 +493,17 @@ def wanderlog_ai(request):
             return add_cors_headers(save_story(request_json))
         elif action == "get_stories":
             return add_cors_headers(get_stories(request_json))
+        # === 🔐 AUTHENTICATION ENDPOINTS ===
+        elif action == "register":
+            return add_cors_headers(handle_register(request_json))
+        elif action == "login":
+            return add_cors_headers(handle_login(request_json))
+        elif action == "logout":
+            return add_cors_headers(handle_logout(request_json))
+        elif action == "validate_session":
+            return add_cors_headers(handle_validate_session(request_json))
+        elif action == "get_profile":
+            return add_cors_headers(handle_get_profile(request_json))
         # === 🗺️ MAP ENDPOINTS ===
         elif action == "get_highlighted_map":
             return add_cors_headers(get_highlighted_map(request_json))
@@ -172,6 +513,8 @@ def wanderlog_ai(request):
             return add_cors_headers(export_map_data(request_json))
         elif action == "get_country_details":
             return add_cors_headers(get_country_details(request_json))
+        elif action == "delete_stories_by_country":
+            return add_cors_headers(delete_stories_by_country(request_json))
         elif action == "get_visited_countries":
             # Get stories from storage
             stories_response = get_stories({})
@@ -629,5 +972,51 @@ def get_country_details(request_json):
         
     except Exception as e:
         print(f"Error getting country details: {str(e)}")
+        response = make_response(json.dumps({"error": str(e)}), 500)
+        return response
+
+def delete_stories_by_country(request_json):
+    """Delete all stories for a specific country"""
+    try:
+        country_name = request_json.get("country_name", "")
+        if not country_name:
+            response = make_response(json.dumps({"error": "Country name required"}), 400)
+            return response
+        
+        deleted_count = 0
+        
+        if use_cloud_storage and storage_client:
+            # Delete from Google Cloud Storage
+            bucket = storage_client.bucket(STORIES_BUCKET)
+            blobs = bucket.list_blobs(prefix="stories/")
+            
+            for blob in blobs:
+                if blob.name.endswith('.json'):
+                    content = blob.download_as_text()
+                    story_data = json.loads(content)
+                    if story_data.get('country') == country_name:
+                        blob.delete()
+                        deleted_count += 1
+        else:
+            # Delete from local storage
+            if os.path.exists(LOCAL_STORAGE_DIR):
+                for filename in os.listdir(LOCAL_STORAGE_DIR):
+                    if filename.endswith('.json'):
+                        filepath = os.path.join(LOCAL_STORAGE_DIR, filename)
+                        with open(filepath, 'r') as f:
+                            story_data = json.load(f)
+                            if story_data.get('country') == country_name:
+                                os.remove(filepath)
+                                deleted_count += 1
+        
+        response = make_response(json.dumps({
+            "deleted_count": deleted_count,
+            "country": country_name,
+            "message": f"Deleted {deleted_count} stories for {country_name}"
+        }))
+        return response
+        
+    except Exception as e:
+        print(f"Error deleting stories: {str(e)}")
         response = make_response(json.dumps({"error": str(e)}), 500)
         return response 

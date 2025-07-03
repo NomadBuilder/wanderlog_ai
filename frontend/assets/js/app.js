@@ -14,7 +14,6 @@ class WanderLogApp {
             this.setupGlobalAccess();
             this.showWelcomeMessage();
             
-            console.log('🚀 WanderLog AI initialized successfully!');
         } catch (error) {
             console.error('Failed to initialize WanderLog AI:', error);
             this.showError('Failed to initialize application');
@@ -63,7 +62,6 @@ class WanderLogApp {
         
         // Page navigation functions
         window.showPage = function(pageName) {
-            console.log('[GLOBAL] showPage called with:', pageName);
             if (ui && ui.showPage) {
                 ui.showPage(pageName);
             } else {
@@ -73,7 +71,6 @@ class WanderLogApp {
         
         // Step navigation functions
         window.nextStep = function() {
-            console.log('[GLOBAL] nextStep called');
             if (ui && ui.nextStep) {
                 ui.nextStep();
             } else {
@@ -82,7 +79,6 @@ class WanderLogApp {
         };
         
         window.previousStep = function() {
-            console.log('[GLOBAL] previousStep called');
             if (ui && ui.previousStep) {
                 ui.previousStep();
             } else {
@@ -91,7 +87,6 @@ class WanderLogApp {
         };
         
         window.goToStep = function(stepNumber) {
-            console.log('[GLOBAL] goToStep called with:', stepNumber);
             if (ui && ui.goToStep) {
                 ui.goToStep(stepNumber);
             } else {
@@ -101,7 +96,6 @@ class WanderLogApp {
         
         // City functions
         window.suggestCities = function() {
-            console.log('[GLOBAL] suggestCities called');
             if (ui && ui.suggestCities) {
                 ui.suggestCities();
             } else {
@@ -110,7 +104,6 @@ class WanderLogApp {
         };
         
         window.addManualCity = function() {
-            console.log('[GLOBAL] addManualCity called');
             if (ui && ui.addManualCity) {
                 ui.addManualCity();
             } else {
@@ -120,7 +113,6 @@ class WanderLogApp {
         
         // Memory and story functions
         window.autoFillMemoryPrompts = function() {
-            console.log('[GLOBAL] autoFillMemoryPrompts called');
             if (ui && ui.autoFillMemoryPrompts) {
                 ui.autoFillMemoryPrompts();
             } else {
@@ -129,7 +121,6 @@ class WanderLogApp {
         };
         
         window.generateMemoryPrompts = function() {
-            console.log('[GLOBAL] generateMemoryPrompts called');
             if (ui && ui.generateMemoryPrompts) {
                 ui.generateMemoryPrompts();
             } else {
@@ -138,7 +129,6 @@ class WanderLogApp {
         };
         
         window.generateNarrative = function() {
-            console.log('[GLOBAL] generateNarrative called');
             if (ui && ui.generateNarrative) {
                 ui.generateNarrative();
             } else {
@@ -147,7 +137,6 @@ class WanderLogApp {
         };
         
         window.changeStyle = function(style, btn) {
-            console.log('[GLOBAL] changeStyle called with:', style);
             if (ui && ui.changeStyle) {
                 ui.changeStyle(style, btn);
             } else {
@@ -157,7 +146,6 @@ class WanderLogApp {
         
         // Story options functions
         window.selectStoryLength = function(length) {
-            console.log('[GLOBAL] selectStoryLength called with:', length);
             if (ui && ui.selectStoryLength) {
                 ui.selectStoryLength(length);
             } else {
@@ -166,7 +154,6 @@ class WanderLogApp {
         };
         
         window.selectLayout = function(layout) {
-            console.log('[GLOBAL] selectLayout called with:', layout);
             if (ui && ui.selectLayout) {
                 ui.selectLayout(layout);
             } else {
@@ -176,7 +163,6 @@ class WanderLogApp {
         
         // Save and finish functions
         window.saveStory = function() {
-            console.log('[GLOBAL] saveStory called');
             if (ui && ui.saveStory) {
                 ui.saveStory();
             } else {
@@ -185,7 +171,6 @@ class WanderLogApp {
         };
         
         window.finishStory = function() {
-            console.log('[GLOBAL] finishStory called');
             if (ui && ui.finishStory) {
                 ui.finishStory();
             } else {
@@ -195,7 +180,6 @@ class WanderLogApp {
         
         // Modal functions
         window.showExportOptions = function() {
-            console.log('[GLOBAL] showExportOptions called');
             if (ui && ui.showExportOptions) {
                 ui.showExportOptions();
             } else {
@@ -204,7 +188,6 @@ class WanderLogApp {
         };
         
         window.closeExportModal = function() {
-            console.log('[GLOBAL] closeExportModal called');
             if (ui && ui.closeExportModal) {
                 ui.closeExportModal();
             } else {
@@ -213,7 +196,6 @@ class WanderLogApp {
         };
         
         window.showShareModal = function() {
-            console.log('[GLOBAL] showShareModal called');
             if (ui && ui.showShareModal) {
                 ui.showShareModal();
             } else {
@@ -222,7 +204,6 @@ class WanderLogApp {
         };
         
         window.closeShareModal = function() {
-            console.log('[GLOBAL] closeShareModal called');
             if (ui && ui.closeShareModal) {
                 ui.closeShareModal();
             } else {
@@ -231,7 +212,6 @@ class WanderLogApp {
         };
         
         window.closeStoryModal = function() {
-            console.log('[GLOBAL] closeStoryModal called');
             if (ui && ui.closeStoryModal) {
                 ui.closeStoryModal();
             } else {
@@ -241,7 +221,6 @@ class WanderLogApp {
         
         // Export functions
         window.exportAsPDF = function() {
-            console.log('[GLOBAL] exportAsPDF called');
             if (ui && ui.exportAsPDF) {
                 ui.exportAsPDF();
             } else {
@@ -250,7 +229,6 @@ class WanderLogApp {
         };
         
         window.exportAsText = function() {
-            console.log('[GLOBAL] exportAsText called');
             if (ui && ui.exportAsText) {
                 ui.exportAsText();
             } else {
@@ -259,7 +237,6 @@ class WanderLogApp {
         };
         
         window.exportAsDigitalAlbum = function() {
-            console.log('[GLOBAL] exportAsDigitalAlbum called');
             if (ui && ui.exportAsDigitalAlbum) {
                 ui.exportAsDigitalAlbum();
             } else {
@@ -268,7 +245,6 @@ class WanderLogApp {
         };
         
         window.exportAsSocialMedia = function() {
-            console.log('[GLOBAL] exportAsSocialMedia called');
             if (ui && ui.exportAsSocialMedia) {
                 ui.exportAsSocialMedia();
             } else {
@@ -278,7 +254,6 @@ class WanderLogApp {
         
         // Share functions
         window.shareViaEmail = function() {
-            console.log('[GLOBAL] shareViaEmail called');
             if (ui && ui.shareViaEmail) {
                 ui.shareViaEmail();
             } else {
@@ -287,7 +262,6 @@ class WanderLogApp {
         };
         
         window.shareViaWhatsApp = function() {
-            console.log('[GLOBAL] shareViaWhatsApp called');
             if (ui && ui.shareViaWhatsApp) {
                 ui.shareViaWhatsApp();
             } else {
@@ -296,7 +270,6 @@ class WanderLogApp {
         };
         
         window.shareViaTwitter = function() {
-            console.log('[GLOBAL] shareViaTwitter called');
             if (ui && ui.shareViaTwitter) {
                 ui.shareViaTwitter();
             } else {
@@ -305,7 +278,6 @@ class WanderLogApp {
         };
         
         window.shareViaFacebook = function() {
-            console.log('[GLOBAL] shareViaFacebook called');
             if (ui && ui.shareViaFacebook) {
                 ui.shareViaFacebook();
             } else {
@@ -314,7 +286,6 @@ class WanderLogApp {
         };
         
         window.copyShareLink = function() {
-            console.log('[GLOBAL] copyShareLink called');
             if (ui && ui.copyShareLink) {
                 ui.copyShareLink();
             } else {
@@ -324,7 +295,6 @@ class WanderLogApp {
         
         // Profile functions
         window.shareProfile = function() {
-            console.log('[GLOBAL] shareProfile called');
             if (ui && ui.shareProfile) {
                 ui.shareProfile();
             } else {
@@ -333,7 +303,6 @@ class WanderLogApp {
         };
         
         window.exportStories = function() {
-            console.log('[GLOBAL] exportStories called');
             if (ui && ui.exportStories) {
                 ui.exportStories();
             } else {
@@ -341,7 +310,33 @@ class WanderLogApp {
             }
         };
         
-        console.log('[APP] ✅ All global functions exposed');
+        // Map zoom functions
+        const map = this.map;
+        
+        window.zoomIn = function() {
+            if (map && map.zoomIn) {
+                map.zoomIn();
+            } else {
+                console.error('[GLOBAL] ❌ Map not initialized or zoomIn method not found');
+            }
+        };
+        
+        window.zoomOut = function() {
+            if (map && map.zoomOut) {
+                map.zoomOut();
+            } else {
+                console.error('[GLOBAL] ❌ Map not initialized or zoomOut method not found');
+            }
+        };
+        
+        window.resetZoom = function() {
+            if (map && map.resetZoom) {
+                map.resetZoom();
+            } else {
+                console.error('[GLOBAL] ❌ Map not initialized or resetZoom method not found');
+            }
+        };
+        
     }
 
     showWelcomeMessage() {
@@ -399,12 +394,10 @@ class WanderLogApp {
 
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[APP] 🚀 DOM loaded, initializing WanderLog application...');
     
     try {
         // Create global app instance
         window.wanderLogApp = new WanderLogApp();
-        console.log('[APP] ✅ WanderLog application initialized successfully!');
     } catch (error) {
         console.error('[APP] ❌ Failed to initialize WanderLog application:', error);
         
@@ -424,7 +417,6 @@ if (document.readyState === 'loading') {
     // Document has already loaded
     setTimeout(() => {
         if (!window.wanderLogApp) {
-            console.log('[APP] 🔄 Backup initialization triggered');
             window.wanderLogApp = new WanderLogApp();
         }
     }, 100);

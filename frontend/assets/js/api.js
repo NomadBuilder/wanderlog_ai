@@ -1,7 +1,7 @@
 // API Module - Handles all backend communication
 class WanderLogAPI {
     constructor() {
-        this.baseURL = 'http://localhost:8080';
+        this.baseURL = 'http://localhost:8080/api';
     }
 
     async makeRequest(data, method = 'POST') {
@@ -87,7 +87,7 @@ class WanderLogAPI {
     // Get all saved stories
     async getStories() {
         try {
-            const response = await fetch(`${this.baseURL}/stories`, {
+            const response = await fetch('http://localhost:8080/stories', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

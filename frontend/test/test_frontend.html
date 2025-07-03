@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frontend Test</title>
+</head>
+<body>
+  <h1>Frontend-Backend Connection Test</h1>
+  <button onclick="testConnection()">Test Backend Connection</button>
+  <div id="result"></div>
+
+  <script>
+    async function testConnection() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = 'Testing connection...';
+      
+      try {
+        const response = await fetch('http://localhost:8080', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'suggest_cities',
+            country: 'Thailand'
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          resultDiv.innerHTML = `<h3>✅ Success!</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } else {
+          resultDiv.innerHTML = `<h3>❌ Error: ${response.status}</h3><p>${response.statusText}</p>`;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<h3>❌ Network Error</h3><p>${error.message}</p>`;
+      }
+    }
+  </script>
+</body>
+</html> 

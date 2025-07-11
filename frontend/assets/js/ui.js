@@ -751,7 +751,7 @@ class WanderLogUI {
                 try {
                     const api = new WanderLogAPI();
                     const tApi0 = performance.now();
-                    const data = await api.generateMemoryPrompts([city.city], document.getElementById('countryInputStep1').value);
+                    const data = await api.generateMemoryPrompts(city.city, document.getElementById('countryInputStep1').value);
                     const tApi1 = performance.now();
                     console.log(`[PERF] API generateMemoryPrompts for city '${city.city}' took ${(tApi1 - tApi0).toFixed(1)}ms`);
                     if (data.prompts) {
@@ -845,7 +845,7 @@ class WanderLogUI {
 
         try {
             const api = new WanderLogAPI();
-            const data = await api.generateMemoryPrompts([cityName], document.getElementById('countryInputStep1').value);
+            const data = await api.generateMemoryPrompts(cityName, document.getElementById('countryInputStep1').value);
             
             if (data.prompts && data.prompts[promptIndex]) {
                 const newPrompt = data.prompts[promptIndex];
@@ -954,28 +954,14 @@ class WanderLogUI {
     displayFormattedStory(narrative) {
         const editableStory = document.getElementById('editableStory');
         if (!editableStory) return;
-        
-        // Convert markdown-style formatting to HTML
-        let formattedStory = narrative
-            // Convert ## headers to h3
-            .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-            // Convert **bold** text  
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            // Convert *italic* text
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            // Convert line breaks to paragraphs
-            .split('\n\n')
-            .map(paragraph => {
-                if (paragraph.startsWith('<h3>')) {
-                    return paragraph;
-                }
-                return paragraph.trim() ? `<p>${paragraph.trim()}</p>` : '';
-            })
-            .filter(p => p)
-            .join('\n');
-        
-        editableStory.innerHTML = formattedStory;
-        console.log('[UI] 📝 Displayed formatted story:', formattedStory);
+        // Use marked.js for robust markdown rendering
+        if (window.marked) {
+            editableStory.innerHTML = window.marked.parse(narrative);
+        } else {
+            // Fallback: show plain text
+            editableStory.textContent = narrative;
+        }
+        console.log('[UI] 📝 Displayed formatted story (marked.js):', narrative);
     }
     
     // Update story details in header
@@ -1339,6 +1325,11 @@ class WanderLogUI {
         // Now show the step AFTER all parameters are set
         if (step) {
             this.currentStep = parseInt(step);
+            this.updateStepIndicator();
+            this.showCurrentStep();
+        } else {
+            // If no step parameter, show the first step by default
+            this.currentStep = 1;
             this.updateStepIndicator();
             this.showCurrentStep();
         }

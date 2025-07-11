@@ -5,11 +5,24 @@
   box-sizing: border-box;
 }
 
+html, body {
+  color: #222 !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+input, textarea, select {
+  color: #222 !important;
+  background: #fff !important;
+}
+
+/* Limit white text to splash/hero and footer only */
+.splash-hero, .splash-title, .splash-desc, .footer-text {
+  color: #fff !important;
+}
+
 body {
   font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
-  color: #333;
 }
 
 .container {

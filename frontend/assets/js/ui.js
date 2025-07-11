@@ -18,7 +18,7 @@ class WanderLogUI {
         this.manualCities = [];
         this.memoryPrompts = {};
         this.narrativeStyle = 'personal';
-        this.uploadedPhotos = [];
+        this.uploadedPhotos = []; // Store base64 data URLs for up to 3 photos
         this.selectedStoryLength = 'detailed';
         this.generatedNarrative = '';
         this.currentStyle = 'original';
@@ -63,6 +63,9 @@ class WanderLogUI {
             'Yemen',
             'Zambia', 'Zimbabwe'
         ];
+        this.citySuggestionsCache = {}; // Cache for city suggestions by country
+        this.citySuggestionsPromise = null; // Track in-flight fetch
+        this.lastPrefetchedCountry = '';
         this.init();
     }
 
@@ -102,8 +105,8 @@ class WanderLogUI {
             // Mark as initialized BEFORE showing current step to avoid conflicts
             this.isInitialized = true;
             
-            // Show the current step without calling showPage to avoid conflicts
-            this.showCurrentStep();
+            // Show the correct page after restoring state
+            this.showPage(this.currentPage);
             
             // Final check - hide error banner if it's showing
             const errorBanner = document.getElementById('uiErrorBanner');
@@ -208,34 +211,28 @@ class WanderLogUI {
 
     // Multi-step form navigation
     nextStep() {
+        const t0 = performance.now();
         if (!this.currentUser && this.currentStep >= 1) {
             this.showAuthModal();
             return;
         }
-        console.log(`[UI] nextStep() called. Current step: ${this.currentStep}`);
-        console.log(`[UI] Stack trace:`, new Error().stack);
-        console.log(`[UI] Is initialized: ${this.isInitialized}`);
-        
         if (this.currentStep < 4) {
-            // Before moving to next step, combine cities from both sources
             if (this.currentStep === 2) {
-                console.log('[UI] Combining cities before moving to step 3');
                 this.combineAllCities();
             }
-            
             this.currentStep++;
-            console.log(`[UI] Moved to step ${this.currentStep}`);
             this.updateStepIndicator();
             this.showCurrentStep();
-            
-            // Generate memory prompts when moving to step 3
             if (this.currentStep === 3) {
-                console.log('[UI] Generating memory prompts for step 3');
-                this.generateMemoryPrompts();
+                const tPrompt0 = performance.now();
+                this.generateMemoryPrompts().then(() => {
+                    const tPrompt1 = performance.now();
+                    console.log(`[PERF] generateMemoryPrompts took ${(tPrompt1 - tPrompt0).toFixed(1)}ms`);
+                });
             }
-        } else {
-            console.log('[UI] Already at step 4, cannot go further');
         }
+        const t1 = performance.now();
+        console.log(`[PERF] nextStep (step ${this.currentStep}) took ${(t1 - t0).toFixed(1)}ms`);
     }
 
     previousStep() {
@@ -317,101 +314,65 @@ class WanderLogUI {
     }
 
     showCurrentStep() {
-        console.log(`[UI] showCurrentStep called for step ${this.currentStep}`);
-        console.log(`[UI] showCurrentStep stack trace:`, new Error().stack);
-        
-        // Hide all steps by removing active class AND clearing inline styles
+        const t0 = performance.now();
+        // Only update DOM for current step
         for (let i = 1; i <= 4; i++) {
             const stepContent = document.getElementById(`step${i}Content`);
             if (stepContent) {
-                stepContent.classList.remove('active');
-                // Clear any inline styles that might override CSS
-                stepContent.style.display = '';
-                stepContent.style.opacity = '';
-                stepContent.style.transform = '';
-                console.log(`[UI] Hidden step${i}Content (removed active class and cleared inline styles)`);
-            } else {
-                console.warn(`[UI] step${i}Content element not found`);
-            }
-        }
-        
-        // Show current step by adding active class
-        const currentStepContent = document.getElementById(`step${this.currentStep}Content`);
-        console.log(`[UI] Looking for step${this.currentStep}Content element:`, currentStepContent ? 'found' : 'not found');
-        
-        if (currentStepContent) {
-            currentStepContent.classList.add('active');
-            console.log(`[UI] Added active class to step${this.currentStep}Content`);
-            
-            // Force immediate visibility and trigger reflow
-            currentStepContent.style.display = 'block';
-            currentStepContent.style.opacity = '1';
-            currentStepContent.style.transform = 'translateY(0)';
-            
-            // Trigger a reflow to ensure changes are applied
-            currentStepContent.offsetHeight;
-            
-            console.log(`[UI] Forced step content visibility`);
-            console.log(`[UI] Step content display after fix:`, getComputedStyle(currentStepContent).display);
-            console.log(`[UI] Step content opacity after fix:`, getComputedStyle(currentStepContent).opacity);
-            console.log(`[UI] Cities container after fix:`, document.getElementById('citiesContainerStep2')?.offsetHeight);
-            
-            // Additional debugging - check if this is being called during initialization
-            if (this.currentStep === 1 && !this.isInitialized) {
-                console.log(`[UI] ⚠️ WARNING: showCurrentStep called for step 1 during initialization`);
-            }
-        } else {
-            console.error(`[UI] Could not find step${this.currentStep}Content element`);
-            this.showErrorBanner(`Step ${this.currentStep} content not found`);
-        }
-        
-        // Auto-load cities for step 2 if navigating directly via URL
-        if (this.currentStep === 2) {
-            const countryInput = document.getElementById('countryInputStep1');
-            const citiesContainer = document.getElementById('citiesContainerStep2');
-            
-            console.log(`[UI] Step 2 auto-load check:`, {
-                countryInput: countryInput ? 'found' : 'missing',
-                countryValue: countryInput ? countryInput.value : 'N/A',
-                citiesContainer: citiesContainer ? 'found' : 'missing',
-                cityCount: citiesContainer ? citiesContainer.children.length : 'N/A'
-            });
-            
-            if (countryInput && countryInput.value && citiesContainer && citiesContainer.children.length === 0) {
-                console.log(`[UI] 🚀 Auto-loading cities for ${countryInput.value}...`);
-                this.suggestCities(true); // Pass autoLoad=true to prevent automatic advancement
-            } else {
-                if (!countryInput) console.log('[UI] ❌ Country input not found');
-                if (!countryInput?.value) console.log('[UI] ❌ Country value is empty');
-                if (!citiesContainer) console.log('[UI] ❌ Cities container not found');
-                if (citiesContainer && citiesContainer.children.length > 0) {
-                    console.log('[UI] ✅ Cities already loaded, count:', citiesContainer.children.length);
-                    console.log('[UI] Cities container content:', citiesContainer.innerHTML);
-                    // Check if cities are actually visible
-                    const cityCards = citiesContainer.querySelectorAll('.city-card');
-                    console.log('[UI] City cards found:', cityCards.length);
-                    if (cityCards.length === 0) {
-                        console.log('[UI] 🔄 No city cards found, forcing reload...');
-                        this.suggestCities(true);
-                    }
+                if (i === this.currentStep) {
+                    stepContent.classList.add('active');
+                    stepContent.style.display = '';
+                } else {
+                    stepContent.classList.remove('active');
+                    stepContent.style.display = 'none';
                 }
             }
         }
-        
-        // Special handling for step 4 - ensure story content is displayed
+        // Only auto-load cities for step 2 if needed
+        if (this.currentStep === 2) {
+            const countryInput = document.getElementById('countryInputStep1');
+            const citiesContainer = document.getElementById('citiesContainerStep2');
+            if (countryInput && countryInput.value && citiesContainer && citiesContainer.children.length === 0) {
+                const country = countryInput.value.trim();
+                // Use cache if available
+                if (this.citySuggestionsCache[country]) {
+                    const aiCities = this.citySuggestionsCache[country].cities || [];
+                    this.aiSuggestedCities = aiCities.map(city => ({ city: city.city, activities: city.activities || [] }));
+                    // Filter out AI cities that are already in manual cities
+                    const filteredAiCities = aiCities.filter(aiCity => {
+                        return !this.manualCities.some(manualCity => this.citiesAreSame(aiCity.city, manualCity));
+                    });
+                    const allCities = [
+                        ...this.manualCities.map(city => ({ city, activities: [] })),
+                        ...filteredAiCities
+                    ];
+                    this.currentCityData = { cities: aiCities };
+                    this.displayCities(allCities);
+                    this.showMessage(`Found ${allCities.length} cities for ${country}!`, 'success');
+                    this.updateStepProgress(1, 'completed');
+                } else if (this.citySuggestionsPromise) {
+                    // If fetch is in-flight, wait for it
+                    this.showLoading('Loading city suggestions...');
+                    this.citySuggestionsPromise.then(() => {
+                        this.showCurrentStep();
+                    });
+                } else {
+                    // Fallback: fetch now
+                    this.suggestCities(true);
+                }
+            }
+        }
+        // Step 4: update story display
         if (this.currentStep === 4 && this.generatedNarrative) {
-            console.log('[UI] 📝 Updating story display for step 4');
             this.displayFormattedStory(this.generatedNarrative);
             this.updateStoryDetails();
-            
             const storyContainer = document.getElementById('storyContainer');
             if (storyContainer) {
                 storyContainer.style.display = 'block';
             }
         }
-        
-        // Update URL with current step
-        this.updateURL();
+        const t1 = performance.now();
+        console.log(`[PERF] showCurrentStep (step ${this.currentStep}) took ${(t1 - t0).toFixed(1)}ms`);
     }
 
     // Page navigation
@@ -561,6 +522,10 @@ class WanderLogUI {
                 this.hideDropdown();
             }
         });
+
+        input.addEventListener('blur', () => {
+            setTimeout(() => this.prefetchCitySuggestions(), 200); // Delay to allow dropdown click
+        });
     }
 
     showDropdown(countries) {
@@ -596,6 +561,7 @@ class WanderLogUI {
         }
         this.hideDropdown();
         this.updateURL();
+        this.prefetchCitySuggestions();
     }
 
     // City Suggestions
@@ -770,77 +736,34 @@ class WanderLogUI {
 
     // Memory Prompts Generation
     async generateMemoryPrompts() {
+        const t0 = performance.now();
         if (this.selectedCities.length === 0) {
             return;
         }
-
-        console.log('[UI] 🧠 generateMemoryPrompts starting with cities:', {
-            totalCities: this.selectedCities.length,
-            cities: this.selectedCities.map((city, i) => ({
-                index: i,
-                city: city,
-                type: typeof city,
-                keys: city && typeof city === 'object' ? Object.keys(city) : 'not object'
-            }))
-        });
-
-        // Temporarily disable initialization to prevent step reset
-        const originalInit = this.init;
-        this.init = () => {
-            console.log('[UI] Skipping init during generateMemoryPrompts');
-            return Promise.resolve();
-        };
-
         this.showLoading('Generating memory prompts for your selected cities...');
         this.updateStepProgress(3, 'loading');
-
         try {
             const container = document.getElementById('memoryPromptsContainerStep3');
             if (!container) return;
-            
             container.innerHTML = '';
-
-            // Generate prompts for each selected city
             for (let i = 0; i < this.selectedCities.length; i++) {
                 const city = this.selectedCities[i];
-                console.log(`[UI] 🏙️ Processing city ${i}:`, city);
-                
-                // Create abort controller for timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-                
                 try {
-                    const response = await fetch('http://localhost:8080/api/generate_memory_prompts', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            action: 'generate_memory_prompts',
-                            city: city.city,
-                            country: document.getElementById('countryInputStep1').value
-                        }),
-                        signal: controller.signal
-                    });
-
-                    clearTimeout(timeoutId);
-                    const data = await response.json();
-                    
-                    if (response.ok && data.prompts) {
+                    const api = new WanderLogAPI();
+                    const tApi0 = performance.now();
+                    const data = await api.generateMemoryPrompts([city.city], document.getElementById('countryInputStep1').value);
+                    const tApi1 = performance.now();
+                    console.log(`[PERF] API generateMemoryPrompts for city '${city.city}' took ${(tApi1 - tApi0).toFixed(1)}ms`);
+                    if (data.prompts) {
                         this.displayCityPrompts(city, data.prompts, i);
                     } else {
                         this.showMessage(data.error || `Failed to generate prompts for ${city.city}.`);
                     }
                 } catch (fetchError) {
-                    clearTimeout(timeoutId);
-                    if (fetchError.name === 'AbortError') {
-                        this.showMessage(`Request timeout for ${city.city}. Please try again.`);
-                    } else {
-                        throw fetchError;
-                    }
+                    this.showMessage(`Failed to generate prompts for ${city.city}. Please try again.`);
+                    console.error('Error:', fetchError);
                 }
             }
-            
             this.updateStepProgress(3, 'completed');
         } catch (error) {
             this.showMessage('Network error. Please try again.');
@@ -848,9 +771,9 @@ class WanderLogUI {
             this.updateStepProgress(3, 'error');
         } finally {
             this.hideLoading();
-            // Restore original init method
-            this.init = originalInit;
         }
+        const t1 = performance.now();
+        console.log(`[PERF] generateMemoryPrompts (all cities) took ${(t1 - t0).toFixed(1)}ms`);
     }
 
     displayCityPrompts(city, prompts, cityIndex) {
@@ -920,28 +843,11 @@ class WanderLogUI {
         refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         refreshBtn.disabled = true;
 
-        // Create abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
         try {
-            const response = await fetch('http://localhost:8080/api/generate_memory_prompts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'generate_memory_prompts',
-                    city: cityName,
-                    country: document.getElementById('countryInputStep1').value
-                }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-            const data = await response.json();
+            const api = new WanderLogAPI();
+            const data = await api.generateMemoryPrompts([cityName], document.getElementById('countryInputStep1').value);
             
-            if (response.ok && data.prompts && data.prompts[promptIndex]) {
+            if (data.prompts && data.prompts[promptIndex]) {
                 const newPrompt = data.prompts[promptIndex];
                 const promptQuestion = refreshBtn.parentElement.querySelector('.prompt-question');
                 promptQuestion.textContent = newPrompt;
@@ -949,13 +855,8 @@ class WanderLogUI {
                 this.showMessage('Failed to generate new question.');
             }
         } catch (error) {
-            clearTimeout(timeoutId);
-            if (error.name === 'AbortError') {
-                this.showMessage('Request timeout. Please try again.');
-            } else {
-                this.showMessage('Network error. Please try again.');
-                console.error('Error:', error);
-            }
+            this.showMessage('Network error. Please try again.');
+            console.error('Error:', error);
         } finally {
             refreshBtn.innerHTML = originalContent;
             refreshBtn.disabled = false;
@@ -964,6 +865,7 @@ class WanderLogUI {
 
     // Narrative Generation
     async generateNarrative() {
+        const t0 = performance.now();
         // Collect user answers from all cities
         this.userAnswers = [];
         const freeform = document.getElementById('freeformMemoryStep3');
@@ -997,6 +899,7 @@ class WanderLogUI {
             const visitDate = countryMonth && countryYear && countryMonth.value && countryYear.value ? 
                 `${countryMonth.value}/${countryYear.value}` : null;
             
+            const tApi0 = performance.now();
             const response = await fetch('http://localhost:8080/api/generate_narrative', {
                 method: 'POST',
                 headers: {
@@ -1013,6 +916,8 @@ class WanderLogUI {
                     visit_date: visitDate // Add visit date information
                 })
             });
+            const tApi1 = performance.now();
+            console.log(`[PERF] API generateNarrative took ${(tApi1 - tApi0).toFixed(1)}ms`);
             const data = await response.json();
             if (response.ok && data.narrative) {
                 this.generatedNarrative = data.narrative;
@@ -1041,6 +946,8 @@ class WanderLogUI {
         } finally {
             this.hideLoading();
         }
+        const t1 = performance.now();
+        console.log(`[PERF] generateNarrative took ${(t1 - t0).toFixed(1)}ms`);
     }
 
     // Display formatted story with proper HTML rendering
@@ -1274,12 +1181,13 @@ class WanderLogUI {
             const storyData = {
                 country: document.getElementById('countryInputStep1').value,
                 cities: this.selectedCities.map(city => city.city),
-                city: this.selectedCities[0] ? this.selectedCities[0].city : '', // Save first city for display
+                city: this.selectedCities[0] ? this.selectedCities[0].city : '',
                 narrative: this.generatedNarrative,
                 user_answers: this.userAnswers,
                 visit_date: this.getVisitDate(),
                 story_length: this.selectedStoryLength,
-                style: this.currentStyle
+                style: this.currentStyle,
+                photos: this.uploadedPhotos.slice(0, 3) // Save up to 3 photos
             };
             const response = await fetch('http://localhost:8080/', {
                 method: 'POST',
@@ -1294,7 +1202,7 @@ class WanderLogUI {
             const data = await response.json();
             if (response.ok) {
                 this.showMessage('Story saved successfully!', 'success');
-                this.loadSavedStories(); // Refresh stories list
+                this.loadSavedStories();
             } else {
                 this.showMessage(data.error || 'Failed to save story.');
             }
@@ -1323,6 +1231,7 @@ class WanderLogUI {
         this.userAnswers = [];
         this.generatedNarrative = '';
         this.selectedStoryLength = 'detailed';
+        this.uploadedPhotos = []; // Reset photos
         
         // Reset form elements
         document.getElementById('countryInputStep1').value = '';
@@ -1336,6 +1245,8 @@ class WanderLogUI {
         // Reset step indicator
         this.updateStepIndicator();
         this.showCurrentStep();
+        const photoPreview = document.getElementById('photoPreviewStep1');
+        if (photoPreview) photoPreview.innerHTML = '';
     }
 
     // Get Visit Date
@@ -1409,6 +1320,7 @@ class WanderLogUI {
             const countryInput = document.getElementById('countryInputStep1');
             if (countryInput) {
                 countryInput.value = country;
+                countryInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
         }
         
@@ -1491,55 +1403,110 @@ class WanderLogUI {
             console.log('[UI] Skipping initializePhotoUpload - already initialized');
             return;
         }
-        
         console.log('[UI] Initializing photo upload...');
-        
         // Add drag and drop functionality
-        const photoUploadSection = document.getElementById('photoUploadSection');
+        const photoUploadSection = document.getElementById('photoUploadSectionStep1');
         if (photoUploadSection) {
             photoUploadSection.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 photoUploadSection.style.borderColor = '#667eea';
                 photoUploadSection.style.background = '#f8fafc';
             });
-            
             photoUploadSection.addEventListener('dragleave', () => {
                 photoUploadSection.style.borderColor = '#d1d5db';
                 photoUploadSection.style.background = '';
             });
-            
             photoUploadSection.addEventListener('drop', (e) => {
                 e.preventDefault();
                 photoUploadSection.style.borderColor = '#d1d5db';
                 photoUploadSection.style.background = '';
-                
                 const files = e.dataTransfer.files;
                 this.handlePhotoUpload({ target: { files } });
             });
         }
+        // Attach file input change event for file picker
+        const fileInput = document.getElementById('photoInputStep1');
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
+        }
+        this.updatePhotoPreview();
+    }
+
+    // Update photo preview area with delete buttons
+    updatePhotoPreview() {
+        const photoPreview = document.getElementById('photoPreviewStep1');
+        if (!photoPreview) return;
+        photoPreview.innerHTML = '';
+        this.uploadedPhotos.forEach((photoData, idx) => {
+            const imgWrapper = document.createElement('div');
+            imgWrapper.className = 'photo-preview-wrapper';
+            imgWrapper.style.position = 'relative';
+            imgWrapper.style.display = 'inline-block';
+            imgWrapper.style.margin = '0 10px 10px 0';
+            imgWrapper.style.verticalAlign = 'top';
+
+            const img = document.createElement('img');
+            img.src = photoData;
+            img.className = 'photo-preview-img';
+            img.style.width = '180px';
+            img.style.height = '180px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '12px';
+            img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+
+            // Delete button
+            const delBtn = document.createElement('button');
+            delBtn.innerHTML = '✖';
+            delBtn.title = 'Remove photo';
+            delBtn.className = 'photo-delete-btn';
+            delBtn.style.position = 'absolute';
+            delBtn.style.top = '8px';
+            delBtn.style.right = '8px';
+            delBtn.style.background = 'rgba(0,0,0,0.6)';
+            delBtn.style.color = '#fff';
+            delBtn.style.border = 'none';
+            delBtn.style.borderRadius = '50%';
+            delBtn.style.width = '28px';
+            delBtn.style.height = '28px';
+            delBtn.style.cursor = 'pointer';
+            delBtn.style.fontSize = '18px';
+            delBtn.style.display = 'flex';
+            delBtn.style.alignItems = 'center';
+            delBtn.style.justifyContent = 'center';
+            delBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.uploadedPhotos.splice(idx, 1);
+                this.updatePhotoPreview();
+                // Optionally update any photo count UI here
+            });
+
+            imgWrapper.appendChild(img);
+            imgWrapper.appendChild(delBtn);
+            photoPreview.appendChild(imgWrapper);
+        });
     }
 
     // Handle photo upload
     handlePhotoUpload(event) {
         const files = event.target.files;
-        const photoPreview = document.getElementById('photoPreview');
-        
+        const photoPreview = document.getElementById('photoPreviewStep1');
         if (!photoPreview) return;
-        
-        for (let file of files) {
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    photoPreview.appendChild(img);
-                };
-                reader.readAsDataURL(file);
-            }
+        // Limit to 3 photos
+        if (this.uploadedPhotos.length + files.length > 3) {
+            this.showMessage('You can only add up to 3 photos per story.');
+            return;
         }
+        Array.from(files).forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (this.uploadedPhotos.length < 3) {
+                    this.uploadedPhotos.push(e.target.result);
+                    this.updatePhotoPreview();
+                }
+            };
+            reader.readAsDataURL(file);
+        });
     }
-
-
 
     // Handle Enter key press for city input fields  
     handleCityInputKeypress(event, step) {
@@ -1573,12 +1540,9 @@ class WanderLogUI {
     async loadSavedStories() {
         this.showLoading('Loading your stories...');
         try {
-            const response = await fetch(`http://localhost:8080/stories?t=${Date.now()}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const data = await response.json();
-            if (response.ok && data.stories) {
+            const api = new WanderLogAPI();
+            const data = await api.getStories();
+            if (data.stories) {
                 this.stories = data.stories;
                 this.filteredStories = [...this.stories];
                 this.displayStories();
@@ -1662,7 +1626,13 @@ class WanderLogUI {
                             ${dateDisplay}
                         </div>
                     </div>
-                    
+                    <div class="country-photos">
+                        ${stories.map(story =>
+                            (story.photos && story.photos.length > 0) ?
+                                story.photos.slice(0, 3).map(photo => `<img src="${photo}" style="max-width:80px;max-height:80px;margin:4px;border-radius:6px;box-shadow:0 1px 4px #ccc;" loading="lazy" />`).join('')
+                                : ''
+                        ).join('')}
+                    </div>
                     <div class="country-stats">
                         <div class="stat">
                             <div class="stat-number">${totalCities}</div>
@@ -1706,6 +1676,16 @@ class WanderLogUI {
                 </div>
             `;
         }
+        // After rendering each story card and its images:
+        setTimeout(() => {
+            document.querySelectorAll('.story-card img, .country-card img').forEach(img => {
+                img.style.cursor = 'pointer';
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.openLightbox(img.src);
+                });
+            });
+        }, 0);
     }
 
     // Display no results state
@@ -2035,10 +2015,12 @@ class WanderLogUI {
             console.log('[UI] URL page parameter found:', page);
         }
 
-        // Handle step-based parameters for create page
-        if (step) {
+        // Only set to create if step is present and page is NOT present
+        if (step && !page) {
             this.currentStep = parseInt(step);
-            this.currentPage = 'create'; // Set to create page if step is specified
+            this.currentPage = 'create';
+        } else if (step) {
+            this.currentStep = parseInt(step);
         }
         
         if (country) {
@@ -2251,6 +2233,82 @@ class WanderLogUI {
                 storyContainer.style.display = 'block';
             }
         }
+    }
+
+    // Prefetch city suggestions when country is selected
+    prefetchCitySuggestions() {
+        const country = document.getElementById('countryInputStep1').value.trim();
+        if (!country || country === this.lastPrefetchedCountry) return;
+        this.lastPrefetchedCountry = country;
+        // If already cached, skip
+        if (this.citySuggestionsCache[country]) return;
+        // Start fetch and store promise
+        this.citySuggestionsPromise = this.fetchCitySuggestions(country).then(data => {
+            this.citySuggestionsCache[country] = data;
+            this.citySuggestionsPromise = null;
+        });
+    }
+
+    // Fetch city suggestions (returns Promise)
+    async fetchCitySuggestions(country) {
+        try {
+            const response = await fetch('http://localhost:8080/wanderlog_ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'suggest_cities', country })
+            });
+            const data = await response.json();
+            return data;
+        } catch (e) {
+            return { cities: [] };
+        }
+    }
+
+    // Add lightbox modal HTML to the page (once)
+    addLightboxModal() {
+        if (document.getElementById('storyImageLightbox')) return;
+        const modal = document.createElement('div');
+        modal.id = 'storyImageLightbox';
+        modal.style.display = 'none';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.85)';
+        modal.style.zIndex = '9999';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.flexDirection = 'column';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <span id="lightboxCloseBtn" style="position:absolute;top:32px;right:48px;font-size:2.5rem;color:#fff;cursor:pointer;z-index:10001;">✖</span>
+            <img id="lightboxImg" src="" style="max-width:90vw;max-height:80vh;border-radius:16px;box-shadow:0 4px 32px rgba(0,0,0,0.3);background:#fff;" />
+        `;
+        document.body.appendChild(modal);
+        // Close on click outside or close button
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.id === 'lightboxCloseBtn') {
+                this.closeLightbox();
+            }
+        });
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (modal.style.display !== 'none' && e.key === 'Escape') {
+                this.closeLightbox();
+            }
+        });
+    }
+    openLightbox(imgSrc) {
+        this.addLightboxModal();
+        const modal = document.getElementById('storyImageLightbox');
+        const img = document.getElementById('lightboxImg');
+        img.src = imgSrc;
+        modal.style.display = 'flex';
+    }
+    closeLightbox() {
+        const modal = document.getElementById('storyImageLightbox');
+        if (modal) modal.style.display = 'none';
     }
 }
 
@@ -2997,3 +3055,72 @@ function generateMemoryPrompts() {
     }
 }
 window.generateMemoryPrompts = generateMemoryPrompts;
+
+// Add performance optimizations
+let debounceTimer = null;
+let lastSearchTerm = '';
+
+function debounce(func, wait) {
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(debounceTimer);
+            func(...args);
+        };
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(later, wait);
+    };
+}
+
+// Optimize search functionality
+const debouncedFilterStories = debounce(function(searchTerm) {
+    if (searchTerm === lastSearchTerm) return;
+    lastSearchTerm = searchTerm;
+    
+    const stories = this.stories || [];
+    this.filteredStories = stories.filter(story => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            story.country?.toLowerCase().includes(searchLower) ||
+            story.cities?.some(city => city.toLowerCase().includes(searchLower)) ||
+            story.narrative?.toLowerCase().includes(searchLower)
+        );
+    });
+    
+    this.displayStories();
+}, 300);
+
+// Optimize story display
+function displayStoriesOptimized() {
+    const container = document.getElementById('storiesContainer');
+    if (!container) return;
+    
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
+    
+    if (!this.filteredStories || this.filteredStories.length === 0) {
+        if (!this.stories || this.stories.length === 0) {
+            fragment.appendChild(this.createEmptyState());
+        } else {
+            fragment.appendChild(this.createNoResultsState());
+        }
+    } else {
+        // Group stories efficiently
+        const storiesByCountry = {};
+        this.filteredStories.forEach(story => {
+            if (!storiesByCountry[story.country]) {
+                storiesByCountry[story.country] = [];
+            }
+            storiesByCountry[story.country].push(story);
+        });
+        
+        // Create cards efficiently
+        Object.entries(storiesByCountry).forEach(([country, stories]) => {
+            const card = this.createCountryCard(country, stories);
+            fragment.appendChild(card);
+        });
+    }
+    
+    // Single DOM update
+    container.innerHTML = '';
+    container.appendChild(fragment);
+}

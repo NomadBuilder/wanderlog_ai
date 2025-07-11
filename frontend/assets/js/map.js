@@ -34,6 +34,8 @@ class WanderLogMap {
         this.hoverPanelTimeout = null; // Timeout for hover panel hiding
         
         this.init();
+        this.setupTooltipActionDelegation(); // Ensure tooltip action links always work
+        window.wanderLogMap = this; // Ensure global reference for tooltip actions
     }
 
     init() {
@@ -46,6 +48,7 @@ class WanderLogMap {
         this.loadMap();
         this.setupEventListeners();
         this.setupZoomAndPan();
+        this.setupTooltipActionDelegation();
     }
 
     async loadMap() {
@@ -53,6 +56,16 @@ class WanderLogMap {
             const response = await fetch('/assets/maps/world-map.svg');
             const svgText = await response.text();
             this.mapContainer.innerHTML = svgText;
+            // Remove <title> and title attributes to prevent browser tooltips
+            const svg = this.mapContainer.querySelector('svg');
+            if (svg) {
+                // Remove <title> elements
+                const titles = svg.querySelectorAll('title');
+                titles.forEach(t => t.remove());
+                // Remove title attributes from SVG and children
+                svg.removeAttribute('title');
+                svg.querySelectorAll('[title]').forEach(el => el.removeAttribute('title'));
+            }
             
             // Initialize country data
             this.initializeCountries();
@@ -473,7 +486,7 @@ class WanderLogMap {
         }
     }
 
-    selectCountry(element) {
+    selectCountry(element, makeSticky = false) {
         const countryName = element.getAttribute('data-country');
         const isVisited = this.visitedCountries.has(countryName);
         
@@ -492,8 +505,8 @@ class WanderLogMap {
         element.classList.add('selected');
         this.selectedCountry = element;
         
-        // Make the current hover panel sticky
-        this.isPanelSticky = true;
+        // Make the current hover panel sticky if clicked
+        this.isPanelSticky = !!makeSticky;
         this.currentHoveredCountry = countryName;
         
         // Clear any existing hover timeouts to prevent hiding
@@ -636,17 +649,16 @@ class WanderLogMap {
     createStoryForCountry(countryName) {
         // Hide the sticky panel first
         this.hideStickyPanel();
-        
         // Navigate to create page with country pre-filled
         if (window.wanderLogApp && window.wanderLogApp.ui) {
             window.wanderLogApp.ui.showPage('create');
-            // Pre-fill country input
-            const countryInput = document.getElementById('countryInput');
+            // Pre-fill country input (correct id)
+            const countryInput = document.getElementById('countryInputStep1');
             if (countryInput) {
                 countryInput.value = countryName;
-                // Trigger any autocomplete updates
                 countryInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
+            this.hideTooltip(); // Ensure tooltip is closed
         } else {
             // Fallback - simple redirect
             window.location.href = `/?country=${encodeURIComponent(countryName)}`;
@@ -656,8 +668,8 @@ class WanderLogMap {
     async loadVisitedCountries() {
         try {
             // Load stories and extract visited countries
-            const response = await fetch(`http://localhost:8080/stories?t=${Date.now()}`);
-            const data = await response.json();
+            const api = new WanderLogAPI();
+            const data = await api.getStories();
             
             if (data.stories) {
                 data.stories.forEach(story => {
@@ -701,6 +713,10 @@ class WanderLogMap {
     }
 
     showTooltip(element, event) {
+        // If sticky, do not re-render or replace the tooltip
+        if (this.isPanelSticky && document.querySelector('.map-tooltip.sticky-tooltip')) {
+            return;
+        }
         const countryName = element.getAttribute('data-country');
         const isVisited = this.visitedCountries.has(countryName);
         
@@ -729,7 +745,7 @@ class WanderLogMap {
                 ${countryStories.length > 0 ? `
                     <div class="tooltip-stories">
                         <strong>${countryStories.length} ${countryStories.length === 1 ? 'story' : 'stories'}</strong>
-                        <div class="tooltip-action">Click to view stories and add more →</div>
+                        <div class="tooltip-action" style="cursor:pointer;color:#7c5dfa;text-decoration:underline;" data-country="${countryName}" data-action="view">Click to view stories and add more →</div>
                     </div>
                 ` : ''}
             `;
@@ -739,7 +755,7 @@ class WanderLogMap {
                     <strong>${countryName}</strong>
                     <span class="not-visited-badge">○ Not visited</span>
                 </div>
-                <div class="tooltip-action">Click to create your first story →</div>
+                <div class="tooltip-action" style="cursor:pointer;color:#7c5dfa;text-decoration:underline;" data-country="${countryName}" data-action="create">Click to create your first story →</div>
             `;
         }
         
@@ -754,7 +770,7 @@ class WanderLogMap {
             padding: 12px 16px;
             border-radius: 8px;
             font-size: 13px;
-            pointer-events: none;
+            pointer-events: auto;
             z-index: 1000;
             max-width: 250px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -783,9 +799,10 @@ class WanderLogMap {
     }
 
     hideTooltip() {
-        // Only hide non-sticky tooltips
-        const tooltips = document.querySelectorAll('.map-tooltip:not(.sticky-tooltip)');
-        tooltips.forEach(tooltip => tooltip.remove());
+        // Remove all tooltips
+        document.querySelectorAll('.map-tooltip').forEach(t => t.remove());
+        this.currentHoveredCountry = null;
+        this.isPanelSticky = false;
     }
     
 
@@ -952,11 +969,11 @@ class WanderLogMap {
         if (this.clickOutsideHandler) {
             document.removeEventListener('click', this.clickOutsideHandler);
         }
-        
         this.clickOutsideHandler = (event) => {
-            // Don't close if clicking inside the sticky country panel
+            // Don't close if clicking inside the sticky country panel or tooltip
             const panel = document.querySelector('.country-panel.sticky-panel');
-            if (panel && panel.contains(event.target)) {
+            const tooltip = document.querySelector('.map-tooltip.sticky-tooltip');
+            if ((panel && panel.contains(event.target)) || (tooltip && tooltip.contains(event.target))) {
                 return;
             }
             // Find sticky tooltips
@@ -988,14 +1005,11 @@ class WanderLogMap {
                 event.target.closest('.map-instructions')) {
                 return;
             }
-            // Close sticky tooltips for any other clicks
-            this.hideStickyTooltips();
+            // Otherwise, close the sticky tooltip and reset sticky state
+            this.isPanelSticky = false;
+            this.hideTooltip();
         };
-        // Use setTimeout to add the listener after the current event cycle
-        // This prevents the click that opened the tooltip from immediately closing it
-        setTimeout(() => {
-            document.addEventListener('click', this.clickOutsideHandler);
-        }, 100);
+        document.addEventListener('click', this.clickOutsideHandler);
     }
 
     // Clear all visited countries for testing
@@ -1164,10 +1178,9 @@ class WanderLogMap {
                 // Find the country element and select it
                 const countryElement = this.findCountryElement(e.target);
                 if (countryElement) {
-                    this.selectCountry(countryElement);
+                    this.selectCountry(countryElement, true); // Pass true to indicate sticky
                 }
             }
-            
             // Reset mouse state
             this.mouseDownPoint = null;
             this.isDragging = false;
@@ -1385,6 +1398,90 @@ class WanderLogMap {
         );
         this.updateZoomIndicator();
     }
+
+    setupTooltipActionDelegation() {
+        if (window._wanderlogTooltipDelegationSetup) return;
+        document.addEventListener('click', (e) => {
+            const action = e.target.closest('.tooltip-action');
+            if (action) {
+                const country = action.getAttribute('data-country');
+                const type = action.getAttribute('data-action');
+                if (country && type) {
+                    if (type === 'view') {
+                        window.wanderLogMap.viewCountryStories(country);
+                    } else if (type === 'create') {
+                        window.wanderLogMap.createStoryForCountry(country);
+                    }
+                }
+            }
+        });
+        window._wanderlogTooltipDelegationSetup = true;
+    }
+}
+
+// Add performance optimizations
+let mapInitialized = false;
+let mapLoadPromise = null;
+
+async function initializeMap() {
+    if (mapInitialized) return;
+    if (mapLoadPromise) return mapLoadPromise;
+    
+    mapLoadPromise = new Promise(async (resolve) => {
+        console.log('🗺️ Initializing Map System...');
+        
+        // Lazy load map data
+        const mapContainer = document.getElementById('mapContainer');
+        if (!mapContainer) {
+            console.error('Map container not found');
+            resolve();
+            return;
+        }
+        
+        try {
+            // Load map SVG asynchronously
+            const response = await fetch('/assets/maps/world-map.svg');
+            const svgText = await response.text();
+            
+            // Parse SVG efficiently
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+            const svgElement = svgDoc.documentElement;
+            
+            // Optimize SVG for performance
+            svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            svgElement.setAttribute('viewBox', '0 0 1000 500');
+            
+            mapContainer.innerHTML = '';
+            mapContainer.appendChild(svgElement);
+            
+            // Remove <title> and title attributes to prevent browser tooltips
+            const svg = mapContainer.querySelector('svg');
+            if (svg) {
+                // Remove <title> elements
+                const titles = svg.querySelectorAll('title');
+                titles.forEach(t => t.remove());
+                // Remove title attributes from SVG and children
+                svg.removeAttribute('title');
+                svg.querySelectorAll('[title]').forEach(el => el.removeAttribute('title'));
+            }
+
+            // Initialize map interactions after DOM is ready
+            requestAnimationFrame(() => {
+                setupMapInteractions();
+                loadVisitedCountries();
+                mapInitialized = true;
+                console.log('✅ Map initialized with optimizations');
+                resolve();
+            });
+            
+        } catch (error) {
+            console.error('Error loading map:', error);
+            resolve();
+        }
+    });
+    
+    return mapLoadPromise;
 }
 
 // Export for use in other modules

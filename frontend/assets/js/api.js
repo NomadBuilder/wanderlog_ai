@@ -146,5 +146,42 @@ class WanderLogAPI {
     }
 }
 
+// Add caching layer to API calls
+const API_CACHE = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+function getCachedData(key) {
+    const cached = API_CACHE.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+    }
+    return null;
+}
+
+function setCachedData(key, data) {
+    API_CACHE.set(key, {
+        data: data,
+        timestamp: Date.now()
+    });
+}
+
+async function fetchStories() {
+    const cacheKey = 'stories';
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+        return cached;
+    }
+    
+    try {
+        const api = new WanderLogAPI();
+        const data = await api.getStories();
+        setCachedData(cacheKey, data);
+        return data;
+    } catch (error) {
+        console.error('Error fetching stories:', error);
+        return [];
+    }
+}
+
 // Export for use in other modules
 window.WanderLogAPI = WanderLogAPI; 

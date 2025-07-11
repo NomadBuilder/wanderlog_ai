@@ -11,6 +11,8 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from functools import wraps
+import time
 
 # === 🗺️ MAP INTEGRATION ===
 from utils.map_integration import *
@@ -1049,3 +1051,35 @@ def delete_stories_by_country(request_json):
         print(f"Error deleting stories: {str(e)}")
         response = make_response(json.dumps({"error": str(e)}), 500)
         return response 
+
+# Add caching decorator
+def cache_response(expiry_seconds=300):
+    def decorator(func):
+        cache = {}
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Create cache key
+            cache_key = f"{func.__name__}_{hash(str(args) + str(kwargs))}"
+            current_time = time.time()
+            
+            # Check if cached response is still valid
+            if cache_key in cache:
+                cached_item = cache[cache_key]
+                if isinstance(cached_item, tuple) and len(cached_item) == 2:
+                    cached_data, cached_time = cached_item
+                    if current_time - cached_time < expiry_seconds:
+                        return cached_data
+            
+            # Execute function and cache result
+            result = func(*args, **kwargs)
+            cache[cache_key] = (result, current_time)
+            
+            # Clean old cache entries
+            if len(cache) > 100:  # Limit cache size
+                oldest_key = min(cache.keys(), key=lambda k: cache[k][1] if isinstance(cache[k], tuple) and len(cache[k]) == 2 else 0)
+                del cache[oldest_key]
+            
+            return result
+        return wrapper
+    return decorator 

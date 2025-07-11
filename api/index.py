@@ -13,8 +13,6 @@ try:
     print('import traceback: OK')
     import threading
     print('import threading: OK')
-    import functools
-    print('import functools: OK')
     import sqlite3
     print('import sqlite3: OK')
     import secrets

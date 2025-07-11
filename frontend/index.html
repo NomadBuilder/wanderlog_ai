@@ -80,260 +80,239 @@
         <main class="main-content">
             <!-- Create Story Page -->
             <div id="createPage" class="page-content active">
-                <h2>Create Your Travel Story</h2>
-                <p class="mb-20">Follow the steps below to create your personalized travel narrative.</p>
-                
-                <!-- Step Indicator -->
-                <div class="step-indicator">
-                    <div id="step1" class="step active" data-step="1" onclick="goToStep(1)">
-                        <div class="step-number">1</div>
-                        <div class="step-label">Country</div>
-                    </div>
-                    <div id="step2" class="step pending" data-step="2" onclick="goToStep(2)">
-                        <div class="step-number">2</div>
-                        <div class="step-label">Cities</div>
-                    </div>
-                    <div id="step3" class="step pending" data-step="3" onclick="goToStep(3)">
-                        <div class="step-number">3</div>
-                        <div class="step-label">Memories</div>
-                    </div>
-                    <div id="step4" class="step pending" data-step="4" onclick="goToStep(4)">
-                        <div class="step-number">4</div>
-                        <div class="step-label">Create & Share</div>
-                    </div>
-                </div>
-
-                <!-- Step 1: Country Selection -->
-                <div id="step1Content" class="step-content">
-                    <h3>Where did you travel?</h3>
-                    <p>Enter the country you visited to get started.</p>
+                <form id="createForm" autocomplete="off">
+                    <h2>Create Your Travel Story</h2>
+                    <p class="mb-20">Follow the steps below to create your personalized travel narrative.</p>
                     
-                    <div class="form-group">
-                        <label for="countryInput" class="form-label">Country</label>
-                        <div class="autocomplete-container">
-                            <input type="text" id="countryInput" class="form-input" placeholder="e.g., Thailand" required>
-                            <div id="countryDropdown" class="autocomplete-dropdown"></div>
+                    <!-- Step Indicator -->
+                    <div class="step-indicator">
+                        <div id="step1" class="step active" data-step="1" onclick="goToStep(1)">
+                            <div class="step-number">1</div>
+                            <div class="step-label">Country</div>
+                        </div>
+                        <div id="step2" class="step pending" data-step="2" onclick="goToStep(2)">
+                            <div class="step-number">2</div>
+                            <div class="step-label">Cities</div>
+                        </div>
+                        <div id="step3" class="step pending" data-step="3" onclick="goToStep(3)">
+                            <div class="step-number">3</div>
+                            <div class="step-label">Memories</div>
+                        </div>
+                        <div id="step4" class="step pending" data-step="4" onclick="goToStep(4)">
+                            <div class="step-number">4</div>
+                            <div class="step-label">Create & Share</div>
                         </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Month & Year of Visit</label>
-                        <div class="date-input-group">
-                            <select id="countryMonth" class="form-input date-input">
-                                <option value="">Select Month</option>
-                                <option value="January">January</option>
-                                <option value="February">February</option>
-                                <option value="March">March</option>
-                                <option value="April">April</option>
-                                <option value="May">May</option>
-                                <option value="June">June</option>
-                                <option value="July">July</option>
-                                <option value="August">August</option>
-                                <option value="September">September</option>
-                                <option value="October">October</option>
-                                <option value="November">November</option>
-                                <option value="December">December</option>
-                            </select>
-                            <select id="countryYear" class="form-input date-input">
-                                <option value="">Select Year</option>
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
-                                <option value="2023">2023</option>
-                                <option value="2022">2022</option>
-                                <option value="2021">2021</option>
-                                <option value="2020">2020</option>
-                                <option value="2019">2019</option>
-                                <option value="2018">2018</option>
-                                <option value="2017">2017</option>
-                                <option value="2016">2016</option>
-                                <option value="2015">2015</option>
-                            </select>
-                        </div>
-                    </div>
-                    
 
-                    
-                    <div class="form-group">
-                        <label class="form-label">📸 Add Photos (Optional)</label>
-                        <div class="photo-upload-section" id="photoUploadSection">
-                            <div class="photo-upload-area" onclick="document.getElementById('photoInput').click()">
-                                <div class="photo-upload-icon">
-                                    <i class="fas fa-camera"></i>
+                    <!-- Step 1: Country Selection -->
+                    <div id="step1Content" class="step-content">
+                        <h3>Where did you travel?</h3>
+                        <p>Enter the country you visited to get started.</p>
+                        
+                        <div class="form-group">
+                            <label for="countryInputStep1" class="form-label">Country</label>
+                            <div class="autocomplete-container">
+                                <input type="text" id="countryInputStep1" class="form-input" placeholder="e.g., Thailand" required>
+                                <div id="countryDropdownStep1" class="autocomplete-dropdown"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Month & Year of Visit</label>
+                            <div class="date-input-group">
+                                <select id="countryMonthStep1" class="form-input date-input">
+                                    <option value="">Select Month</option>
+                                    <option value="January">January</option>
+                                    <option value="February">February</option>
+                                    <option value="March">March</option>
+                                    <option value="April">April</option>
+                                    <option value="May">May</option>
+                                    <option value="June">June</option>
+                                    <option value="July">July</option>
+                                    <option value="August">August</option>
+                                    <option value="September">September</option>
+                                    <option value="October">October</option>
+                                    <option value="November">November</option>
+                                    <option value="December">December</option>
+                                </select>
+                                <select id="countryYearStep1" class="form-input date-input">
+                                    <option value="">Select Year</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2022">2022</option>
+                                    <option value="2021">2021</option>
+                                    <option value="2020">2020</option>
+                                    <option value="2019">2019</option>
+                                    <option value="2018">2018</option>
+                                    <option value="2017">2017</option>
+                                    <option value="2016">2016</option>
+                                    <option value="2015">2015</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">📸 Add Photos (Optional)</label>
+                            <div class="photo-upload-section" id="photoUploadSectionStep1">
+                                <div class="photo-upload-area" onclick="document.getElementById('photoInputStep1').click()">
+                                    <div class="photo-upload-icon">
+                                        <i class="fas fa-camera"></i>
+                                    </div>
+                                    <div class="photo-upload-text">
+                                        Drag and drop photos here or click to browse
+                                    </div>
+                                    <button type="button" class="photo-upload-btn">
+                                        <i class="fas fa-upload"></i>
+                                        Choose Photos
+                                    </button>
                                 </div>
-                                <div class="photo-upload-text">
-                                    Drag and drop photos here or click to browse
-                                </div>
-                                <button type="button" class="photo-upload-btn">
-                                    <i class="fas fa-upload"></i>
-                                    Choose Photos
+                                <input type="file" id="photoInputStep1" multiple accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)">
+                            </div>
+                            <div class="photo-preview" id="photoPreviewStep1"></div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="suggestCities()" type="button">
+                            <i class="fas fa-search"></i>
+                            Find Cities & Activities
+                        </button>
+                    </div>
+
+                    <!-- Step 2: City Selection -->
+                    <div id="step2Content" class="step-content">
+                        <h3>Which cities did you visit?</h3>
+                        <p>Select the cities you explored or add your own.</p>
+                        
+                        <div class="form-group">
+                            <label for="manualCityInputStep2" class="form-label">Add Your Own City</label>
+                            <div class="input-group">
+                                <input type="text" id="manualCityInputStep2" class="form-input" placeholder="e.g., Chiang Mai (press Enter to add)" onkeypress="handleCityInputKeypress(event, 'step2')">
+                                <button type="button" class="btn btn-secondary" onclick="addManualCity()">
+                                    <i class="fas fa-plus"></i>
+                                    Add
                                 </button>
                             </div>
-                            <input type="file" id="photoInput" multiple accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)">
                         </div>
-                        <div class="photo-preview" id="photoPreview"></div>
+                        
+                        <div id="citiesContainerStep2" class="cities-grid">
+                            <!-- Cities will be displayed here -->
+                        </div>
+                        
+                        <div class="step-navigation">
+                            <button class="btn btn-secondary" onclick="previousStep()" type="button">
+                                <i class="fas fa-arrow-left"></i>
+                                Back
+                            </button>
+                            <button id="nextStepBtnStep2" class="btn btn-primary" onclick="nextStep()" disabled type="button">
+                                Next
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
                     </div>
-                    
-                    <button class="btn btn-primary" onclick="suggestCities()">
-                        <i class="fas fa-search"></i>
-                        Find Cities & Activities
-                    </button>
-                </div>
 
-                <!-- Step 2: City Selection -->
-                <div id="step2Content" class="step-content" style="display: none;">
-                    <h3>Which cities did you visit?</h3>
-                    <p>Select the cities you explored or add your own.</p>
-                    
-                    <div class="form-group">
-                        <label for="manualCityInput" class="form-label">Add Your Own City</label>
-                        <div class="input-group">
-                            <input type="text" id="manualCityInput" class="form-input" placeholder="e.g., Chiang Mai (press Enter to add)" onkeypress="handleCityInputKeypress(event, 'step2')">
-                            <button type="button" class="btn btn-secondary" onclick="addManualCity()">
-                                <i class="fas fa-plus"></i>
-                                Add
+                    <!-- Step 3: Memory Collection -->
+                    <div id="step3Content" class="step-content">
+                        <h3>Share Your Memories</h3>
+                        <p>Answer AI-generated questions or write freely about your experiences.</p>
+                        
+                        <div class="form-group">
+                            <label for="freeformMemoryStep3" class="form-label">Freeform Memory</label>
+                            <textarea id="freeformMemoryStep3" class="form-input" rows="4" placeholder="Write about your overall experience, feelings, or any special moments..."></textarea>
+                        </div>
+                        
+                        <button class="btn btn-secondary" onclick="autoFillMemoryPrompts()" style="background: #0ea5e9; color: white; border: none;">
+                            <i class="fas fa-magic"></i>
+                            Generate Memory Questions
+                        </button>
+                        
+                        <button class="btn btn-secondary" onclick="demoFillAllData()" style="background: #f59e0b; color: white; border: none; margin-left: 10px;">
+                            <i class="fas fa-bolt"></i>
+                            Demo: Fill All Data
+                        </button>
+                        
+                        <div id="memoryPromptsContainerStep3">
+                            <!-- Memory prompts will be generated here -->
+                        </div>
+                        
+                        <div class="step-navigation">
+                            <button class="btn btn-secondary" onclick="previousStep()" type="button">
+                                <i class="fas fa-arrow-left"></i>
+                                Back
+                            </button>
+                            <button class="btn btn-primary" onclick="nextStep()" type="button">
+                                Next
+                                <i class="fas fa-arrow-right"></i>
                             </button>
                         </div>
                     </div>
-                    
-                    <div id="citiesContainer" class="cities-grid">
-                        <!-- Cities will be displayed here -->
-                    </div>
-                    
-                    <div class="step-navigation">
-                        <button class="btn btn-secondary" onclick="previousStep()">
-                            <i class="fas fa-arrow-left"></i>
-                            Back
-                        </button>
-                        <button id="nextStepBtn" class="btn btn-primary" onclick="nextStep()" disabled>
-                            Next
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Step 3: Memory Collection -->
-                <div id="step3Content" class="step-content" style="display: none;">
-                    <h3>Share Your Memories</h3>
-                    <p>Answer AI-generated questions or write freely about your experiences.</p>
-                    
-                    <div class="form-group">
-                        <label for="freeformMemory" class="form-label">Freeform Memory</label>
-                        <textarea id="freeformMemory" class="form-input" rows="4" placeholder="Write about your overall experience, feelings, or any special moments..."></textarea>
-                    </div>
-                    
-                    <button class="btn btn-secondary" onclick="autoFillMemoryPrompts()" style="background: #0ea5e9; color: white; border: none;">
-                        <i class="fas fa-magic"></i>
-                        Generate Memory Questions
-                    </button>
-                    
-                    <button class="btn btn-secondary" onclick="demoFillAllData()" style="background: #f59e0b; color: white; border: none; margin-left: 10px;">
-                        <i class="fas fa-bolt"></i>
-                        Demo: Fill All Data
-                    </button>
-                    
-                    <div id="memoryPromptsContainer">
-                        <!-- Memory prompts will be generated here -->
-                    </div>
-                    
-                    <div class="step-navigation">
-                        <button class="btn btn-secondary" onclick="previousStep()">
-                            <i class="fas fa-arrow-left"></i>
-                            Back
-                        </button>
-                        <button class="btn btn-primary" onclick="nextStep()">
-                            Next
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Step 4: Create & Share Story -->
-                <div id="step4Content" class="step-content" style="display: none;">
-                    <h3>Create & Share Your Story</h3>
-                    <p>Customize your story options and generate a beautiful narrative.</p>
-                    
-                    <div class="story-options">
-                        <div class="option-group">
-                            <label class="option-label">Story Length:</label>
-                            <div class="option-buttons">
-                                <button class="option-btn active" onclick="selectStoryLength('brief')">Brief</button>
-                                <button class="option-btn" onclick="selectStoryLength('detailed')">Detailed</button>
-                                <button class="option-btn" onclick="selectStoryLength('comprehensive')">Comprehensive</button>
+                    <!-- Step 4: Create & Share Story -->
+                    <div id="step4Content" class="step-content">
+                        <h3>Create & Share Your Story</h3>
+                        <p>Customize your story options and generate a beautiful narrative.</p>
+                        
+                        <div class="story-options">
+                            <div class="option-group">
+                                <label class="option-label">Story Length:</label>
+                                <div class="option-buttons">
+                                    <button class="option-btn active" onclick="selectStoryLength('brief')">Brief</button>
+                                    <button class="option-btn" onclick="selectStoryLength('detailed')">Detailed</button>
+                                    <button class="option-btn" onclick="selectStoryLength('comprehensive')">Comprehensive</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <label class="option-label">Writing Style:</label>
+                                <div class="option-buttons">
+                                    <button class="option-btn active" onclick="selectStoryStyle('original')">Original (NO AI)</button>
+                                    <button class="option-btn" onclick="selectStoryStyle('poetic')">Poetic</button>
+                                    <button class="option-btn" onclick="selectStoryStyle('journalistic')">Journalistic</button>
+                                    <button class="option-btn" onclick="selectStoryStyle('casual')">Casual</button>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="option-group">
-                            <label class="option-label">Writing Style:</label>
-                            <div class="option-buttons">
-                                <button class="option-btn active" onclick="selectStoryStyle('original')">Original</button>
-                                <button class="option-btn" onclick="selectStoryStyle('poetic')">Poetic</button>
-                                <button class="option-btn" onclick="selectStoryStyle('journalistic')">Journalistic</button>
-                                <button class="option-btn" onclick="selectStoryStyle('casual')">Casual</button>
-                            </div>
-                        </div>
-                        
-                        <div class="option-group">
-                            <label class="option-label">Layout Style:</label>
-                            <div class="option-buttons">
-                                <button class="option-btn active" onclick="selectLayout('classic')">Classic</button>
-                                <button class="option-btn" onclick="selectLayout('modern')">Modern</button>
-                                <button class="option-btn" onclick="selectLayout('creative')">Creative</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button class="btn btn-primary" onclick="generateNarrative()">
-                        <i class="fas fa-magic"></i>
-                        Generate Story
-                    </button>
-                    
-                    <div id="storyContainer" class="story-container" style="display: none;">
-                        <div class="story-header">
-                            <h4>Your Travel Story</h4>
-                            <div class="story-details">
-                                <span id="storyCountry"></span> • <span id="storyCities"></span>
-                            </div>
-                        </div>
-                        
-                        <div id="editableStory" class="editable-story" contenteditable="true" placeholder="Your story will appear here...">
-                            <!-- Generated story will be displayed here -->
-                        </div>
-                        
-                        <div class="story-editing-hint">
-                            💡 <strong>Tip:</strong> Click anywhere in the story above to edit it directly!
-                        </div>
-                        
-                        <div class="story-actions">
-                            <button class="btn btn-primary" onclick="saveStory()">
-                                <i class="fas fa-save"></i>
-                                Save Story
-                            </button>
-                            <button class="btn btn-secondary" onclick="showExportOptions()">
-                                <i class="fas fa-download"></i>
-                                Export
-                            </button>
-                            <button class="btn btn-secondary" onclick="showShareModal()">
-                                <i class="fas fa-share"></i>
-                                Share
-                            </button>
-                            <button class="btn btn-secondary" onclick="regenerateStory()">
-                                <i class="fas fa-sync-alt"></i>
-                                Regenerate
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="step-navigation">
-                        <button class="btn btn-secondary" onclick="previousStep()">
-                            <i class="fas fa-arrow-left"></i>
-                            Back
+                        <button class="btn btn-primary" onclick="generateNarrative()">
+                            <i class="fas fa-magic"></i>
+                            Generate Story
                         </button>
-                        <button class="btn btn-primary" onclick="finishStory()">
-                            <i class="fas fa-check"></i>
-                            Finish
-                        </button>
+                        
+                        <div id="storyContainer" class="story-container" style="display: none;">
+                            <div class="story-header">
+                                <h4>Your Travel Story</h4>
+                                <div class="story-details">
+                                    <span id="storyCountry"></span> • <span id="storyCities"></span>
+                                </div>
+                            </div>
+                            
+                            <div id="editableStory" class="editable-story" contenteditable="true" placeholder="Your story will appear here...">
+                                <!-- Generated story will be displayed here -->
+                            </div>
+                            
+                            <div class="story-editing-hint">
+                                💡 <strong>Tip:</strong> Click anywhere in the story above to edit it directly!
+                            </div>
+                            
+                            <div class="story-actions">
+                                <button class="btn btn-primary" onclick="saveStory()">
+                                    <i class="fas fa-save"></i>
+                                    Save Story
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="step-navigation">
+                            <button class="btn btn-secondary" onclick="previousStep()" type="button">
+                                <i class="fas fa-arrow-left"></i>
+                                Back
+                            </button>
+                            <button class="btn btn-primary" onclick="finishStory()" type="button">
+                                <i class="fas fa-check"></i>
+                                Finish
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
 
             <!-- Stories Page -->
@@ -598,7 +577,7 @@
 
         <!-- Footer -->
         <footer class="text-center">
-            <p>&copy; 2025 WanderLog AI. Made with ❤️ for travelers.</p>
+            <p class="footer-text">&copy; 2025 WanderLog AI. Made with ❤️ for travelers.</p>
         </footer>
     </div>
 

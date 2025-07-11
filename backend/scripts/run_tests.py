@@ -24,8 +24,8 @@ def main():
     
     # Create test suite
     test_suite = unittest.TestSuite()
-    test_suite.addTest(unittest.makeSuite(TestWanderLogAI))
-    test_suite.addTest(unittest.makeSuite(TestStorageOperations))
+    test_suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestWanderLogAI))
+    test_suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestStorageOperations))
     
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)

@@ -7,8 +7,8 @@ Connects country mapping and SVG processing for complete map functionality
 import json
 import os
 from typing import Dict, List, Optional
-from map_country_mapping import CountryMapper
-from map_svg_processor import SVGMapProcessor
+from utils.map_country_mapping import CountryMapper
+from utils.map_svg_processor import SVGMapProcessor
 
 class MapIntegration:
     """Integrates map components for WanderLog AI"""

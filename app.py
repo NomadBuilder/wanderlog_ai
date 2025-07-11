@@ -1,9 +1,10 @@
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request, jsonify, Response
 import os
 import requests
 from flask_cors import CORS
 import json
 import sys
+from typing import Union, Tuple, Any
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -39,7 +40,7 @@ def serve_test(filename):
     return send_from_directory('frontend/test', filename)
 
 @app.route('/api/<path:endpoint>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
-def proxy_api(endpoint):
+def proxy_api(endpoint) -> Union[Response, Tuple[bytes, int, list]]:
     """Proxy API requests to the backend"""
     try:
         # Forward the request to the backend
@@ -52,24 +53,28 @@ def proxy_api(endpoint):
         # Remove host header to avoid conflicts
         headers.pop('Host', None)
         
+        # Convert request.args to dict for requests library
+        params = dict(request.args)
+        
         # Make request to backend
         response = requests.request(
             method=request.method,
             url=backend_url,
             data=data,
             headers=headers,
-            params=request.args,
+            params=params,
             timeout=60
         )
         
         # Return backend response
-        return response.content, response.status_code, response.headers.items()
+        return response.content, response.status_code, list(response.headers.items())
         
     except requests.exceptions.RequestException as e:
-        return jsonify({'error': f'Backend connection failed: {str(e)}'}), 503
+        error_json = json.dumps({'error': f'Backend connection failed: {str(e)}'})
+        return error_json.encode('utf-8'), 503, [('Content-Type', 'application/json')]
 
 @app.route('/stories', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
-def proxy_stories():
+def proxy_stories() -> Union[Response, Tuple[bytes, int, list]]:
     """Proxy stories endpoint to backend"""
     try:
         # For GET requests, forward directly to backend /stories
@@ -80,16 +85,19 @@ def proxy_stories():
             headers = dict(request.headers)
             headers.pop('Host', None)
             
+            # Convert request.args to dict
+            params = dict(request.args)
+            
             # Make GET request to backend
             response = requests.get(
                 url=backend_url,
                 headers=headers,
-                params=request.args,
+                params=params,
                 timeout=60
             )
             
             # Return backend response
-            return response.content, response.status_code, response.headers.items()
+            return response.content, response.status_code, list(response.headers.items())
         
         # For POST requests, add action field if not present
         elif request.method == 'POST':
@@ -122,14 +130,15 @@ def proxy_stories():
             )
             
             # Return backend response
-            return response.content, response.status_code, response.headers.items()
+            return response.content, response.status_code, list(response.headers.items())
         
         # For other methods, use the general proxy
         else:
             return proxy_api('')
             
     except requests.exceptions.RequestException as e:
-        return jsonify({'error': f'Backend connection failed: {str(e)}'}), 503
+        error_json = json.dumps({'error': f'Backend connection failed: {str(e)}'})
+        return error_json.encode('utf-8'), 503, [('Content-Type', 'application/json')]
 
 @app.route('/health', methods=['GET', 'OPTIONS'])
 def health_check():

@@ -656,7 +656,7 @@ class WanderLogMap {
     async loadVisitedCountries() {
         try {
             // Load stories and extract visited countries
-            const response = await fetch('/stories');
+            const response = await fetch(`http://localhost:8080/stories?t=${Date.now()}`);
             const data = await response.json();
             
             if (data.stories) {

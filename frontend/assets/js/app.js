@@ -1,6 +1,8 @@
 // Main Application - Coordinates all modules
 class WanderLogApp {
     constructor() {
+        console.log('[APP] WanderLogApp constructor called');
+        console.trace();
         this.api = null;
         this.ui = null;
         this.map = null;
@@ -25,7 +27,17 @@ class WanderLogApp {
         this.api = new WanderLogAPI();
         
         // Initialize UI
-        this.ui = new WanderLogUI();
+        // Singleton enforcement for UI
+        if (window.wanderLogUI) {
+            console.error('[APP] Attempt to create second WanderLogUI! Returning existing instance.');
+            console.trace();
+            this.ui = window.wanderLogUI;
+        } else {
+            console.log('[APP] Creating new WanderLogUI instance');
+            console.trace();
+            this.ui = new WanderLogUI();
+            window.wanderLogUI = this.ui;
+        }
         
         // Initialize Map (if map container exists)
         const mapContainer = document.getElementById('worldMap');
@@ -121,7 +133,9 @@ class WanderLogApp {
         };
         
         window.generateMemoryPrompts = function() {
+            console.log('[GLOBAL] generateMemoryPrompts called');
             if (ui && ui.generateMemoryPrompts) {
+                console.log('[GLOBAL] Calling ui.generateMemoryPrompts()');
                 ui.generateMemoryPrompts();
             } else {
                 console.error('[GLOBAL] ❌ UI not initialized or generateMemoryPrompts method not found');

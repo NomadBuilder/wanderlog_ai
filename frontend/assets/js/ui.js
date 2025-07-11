@@ -1,6 +1,14 @@
 // UI Module - Handles user interface and page navigation
 class WanderLogUI {
     constructor() {
+        if (WanderLogUI._instance) {
+            console.error('[UI] WanderLogUI singleton violation! Returning existing instance.');
+            console.trace();
+            return WanderLogUI._instance;
+        }
+        console.log('[UI] WanderLogUI constructor called');
+        console.trace();
+        WanderLogUI._instance = this;
         this.currentPage = 'create';
         this.stories = [];
         this.filteredStories = [];
@@ -12,7 +20,6 @@ class WanderLogUI {
         this.narrativeStyle = 'personal';
         this.uploadedPhotos = [];
         this.selectedStoryLength = 'detailed';
-        this.selectedStoryLayout = 'classic';
         this.generatedNarrative = '';
         this.currentStyle = 'original';
         this.aiSuggestedCities = [];
@@ -26,6 +33,10 @@ class WanderLogUI {
         // Authentication state
         this.currentUser = null;
         this.sessionToken = localStorage.getItem('wanderlog_session_token');
+        
+        // Flag to prevent re-initialization
+        this.isInitialized = false;
+        
         this.countries = [
             'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
             'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
@@ -56,9 +67,17 @@ class WanderLogUI {
     }
 
     async init() {
+        console.log('[UI] WanderLogUI.init() called');
+        console.trace();
         // Check if we're in a browser environment
         if (typeof window === 'undefined') {
             console.error('[UI] ❌ Not in browser environment');
+            return;
+        }
+        
+        // Prevent re-initialization
+        if (this.isInitialized) {
+            console.log('[UI] Already initialized, skipping...');
             return;
         }
         
@@ -80,8 +99,11 @@ class WanderLogUI {
             this.initStoryOptions();
             this.checkCriticalElements();
             
+            // Mark as initialized BEFORE showing current step to avoid conflicts
+            this.isInitialized = true;
+            
+            // Show the current step without calling showPage to avoid conflicts
             this.showCurrentStep();
-            this.showPage(this.currentPage);
             
             // Final check - hide error banner if it's showing
             const errorBanner = document.getElementById('uiErrorBanner');
@@ -96,32 +118,30 @@ class WanderLogUI {
     }
 
     checkCriticalElements() {
-        // List of required form fields and containers
-        const requiredIds = [
-            'countryInput', 'countryDropdown', 'countryMonth', 'countryYear',
-            'manualCityInput', 'citiesContainer', 'freeformMemory',
-            'memoryPromptsContainer', 'storiesContainer', 'worldMap',
-            'visitedCountries', 'createPage', 'storiesPage', 'mapPage', 'profilePage'
+        const criticalElements = [
+            'countryInputStep1',
+            'countryDropdownStep1',
+            'citiesContainerStep2',
+            'memoryPromptsContainerStep3'
         ];
         
         const missingElements = [];
         
-        requiredIds.forEach(id => {
-            const element = document.getElementById(id);
+        criticalElements.forEach(elementId => {
+            const element = document.getElementById(elementId);
             if (!element) {
-                missingElements.push(id);
-                console.error(`[UI] ❌ Missing element: ${id}`);
+                console.log(`[UI] ❌ Missing element: ${elementId}`);
+                missingElements.push(elementId);
             }
         });
         
         if (missingElements.length > 0) {
-            const errorMsg = `Missing critical elements: ${missingElements.join(', ')}`;
-            console.error('[UI] ❌', errorMsg);
-            this.showErrorBanner(errorMsg);
+            console.log(`[UI] ❌ Missing critical elements: ${missingElements.join(', ')}`);
+            this.showErrorBanner(`Missing critical elements: ${missingElements.join(', ')}`);
+            return false;
         }
         
-        // Check if global functions are available
-        this.checkGlobalFunctions();
+        return true;
     }
 
     checkGlobalFunctions() {
@@ -157,7 +177,11 @@ class WanderLogUI {
         // Create story form
         const createForm = document.getElementById('createForm');
         if (createForm) {
-            createForm.addEventListener('submit', (e) => this.handleCreateStory(e));
+            createForm.addEventListener('submit', (e) => {
+                console.log('[DEBUG] Form submit event triggered!');
+                e.preventDefault();
+                // Removed call to missing handleCreateStory
+            });
         } else {
             console.warn('[UI] #createForm not found');
         }
@@ -171,7 +195,7 @@ class WanderLogUI {
         }
 
         // Country input for URL updates
-        const countryInput = document.getElementById('countryInput');
+        const countryInput = document.getElementById('countryInputStep1');
         if (countryInput) {
             countryInput.addEventListener('input', () => this.updateURL());
         } else {
@@ -184,20 +208,33 @@ class WanderLogUI {
 
     // Multi-step form navigation
     nextStep() {
+        if (!this.currentUser && this.currentStep >= 1) {
+            this.showAuthModal();
+            return;
+        }
+        console.log(`[UI] nextStep() called. Current step: ${this.currentStep}`);
+        console.log(`[UI] Stack trace:`, new Error().stack);
+        console.log(`[UI] Is initialized: ${this.isInitialized}`);
+        
         if (this.currentStep < 4) {
             // Before moving to next step, combine cities from both sources
             if (this.currentStep === 2) {
+                console.log('[UI] Combining cities before moving to step 3');
                 this.combineAllCities();
             }
             
             this.currentStep++;
+            console.log(`[UI] Moved to step ${this.currentStep}`);
             this.updateStepIndicator();
             this.showCurrentStep();
             
             // Generate memory prompts when moving to step 3
             if (this.currentStep === 3) {
+                console.log('[UI] Generating memory prompts for step 3');
                 this.generateMemoryPrompts();
             }
+        } else {
+            console.log('[UI] Already at step 4, cannot go further');
         }
     }
 
@@ -210,13 +247,17 @@ class WanderLogUI {
     }
 
     goToStep(stepNumber) {
+        if (!this.currentUser && stepNumber > 1) {
+            this.showAuthModal();
+            return;
+        }
         // Validate step number
         if (stepNumber < 1 || stepNumber > 4) return;
         
         // Check if we can navigate to this step based on current progress
         if (stepNumber > this.currentStep) {
             // Only allow navigation to next step if current step is complete
-            if (this.currentStep === 1 && !document.getElementById('countryInput').value.trim()) {
+            if (this.currentStep === 1 && !document.getElementById('countryInputStep1').value.trim()) {
                 this.showMessage('Please select a country first.');
                 return;
             }
@@ -277,6 +318,7 @@ class WanderLogUI {
 
     showCurrentStep() {
         console.log(`[UI] showCurrentStep called for step ${this.currentStep}`);
+        console.log(`[UI] showCurrentStep stack trace:`, new Error().stack);
         
         // Hide all steps by removing active class AND clearing inline styles
         for (let i = 1; i <= 4; i++) {
@@ -288,11 +330,15 @@ class WanderLogUI {
                 stepContent.style.opacity = '';
                 stepContent.style.transform = '';
                 console.log(`[UI] Hidden step${i}Content (removed active class and cleared inline styles)`);
+            } else {
+                console.warn(`[UI] step${i}Content element not found`);
             }
         }
         
         // Show current step by adding active class
         const currentStepContent = document.getElementById(`step${this.currentStep}Content`);
+        console.log(`[UI] Looking for step${this.currentStep}Content element:`, currentStepContent ? 'found' : 'not found');
+        
         if (currentStepContent) {
             currentStepContent.classList.add('active');
             console.log(`[UI] Added active class to step${this.currentStep}Content`);
@@ -308,7 +354,12 @@ class WanderLogUI {
             console.log(`[UI] Forced step content visibility`);
             console.log(`[UI] Step content display after fix:`, getComputedStyle(currentStepContent).display);
             console.log(`[UI] Step content opacity after fix:`, getComputedStyle(currentStepContent).opacity);
-            console.log(`[UI] Cities container after fix:`, document.getElementById('citiesContainer')?.offsetHeight);
+            console.log(`[UI] Cities container after fix:`, document.getElementById('citiesContainerStep2')?.offsetHeight);
+            
+            // Additional debugging - check if this is being called during initialization
+            if (this.currentStep === 1 && !this.isInitialized) {
+                console.log(`[UI] ⚠️ WARNING: showCurrentStep called for step 1 during initialization`);
+            }
         } else {
             console.error(`[UI] Could not find step${this.currentStep}Content element`);
             this.showErrorBanner(`Step ${this.currentStep} content not found`);
@@ -316,8 +367,8 @@ class WanderLogUI {
         
         // Auto-load cities for step 2 if navigating directly via URL
         if (this.currentStep === 2) {
-            const countryInput = document.getElementById('countryInput');
-            const citiesContainer = document.getElementById('citiesContainer');
+            const countryInput = document.getElementById('countryInputStep1');
+            const citiesContainer = document.getElementById('citiesContainerStep2');
             
             console.log(`[UI] Step 2 auto-load check:`, {
                 countryInput: countryInput ? 'found' : 'missing',
@@ -365,6 +416,10 @@ class WanderLogUI {
 
     // Page navigation
     showPage(pageName) {
+        if (!this.currentUser && pageName !== 'create') {
+            this.showAuthModal();
+            return;
+        }
         console.log(`[UI] showPage('${pageName}') called`);
         
         // Set current page
@@ -445,8 +500,14 @@ class WanderLogUI {
 
     // Country Autocomplete
     initCountryAutocomplete() {
-        const input = document.getElementById('countryInput');
-        const dropdown = document.getElementById('countryDropdown');
+        // Skip if already initialized
+        if (this.isInitialized) {
+            console.log('[UI] Skipping initCountryAutocomplete - already initialized');
+            return;
+        }
+        
+        const input = document.getElementById('countryInputStep1');
+        const dropdown = document.getElementById('countryDropdownStep1');
         if (!input || !dropdown) {
             console.error('[UI] Country input or dropdown not found');
             return;
@@ -503,9 +564,8 @@ class WanderLogUI {
     }
 
     showDropdown(countries) {
-        const dropdown = document.getElementById('countryDropdown');
+        const dropdown = document.getElementById('countryDropdownStep1');
         if (!dropdown) return;
-        
         dropdown.innerHTML = countries.map(country => 
             `<div class="autocomplete-item" onclick="window.wanderLogApp.ui.selectCountry('${country}')">${country}</div>`
         ).join('');
@@ -513,7 +573,7 @@ class WanderLogUI {
     }
 
     hideDropdown() {
-        const dropdown = document.getElementById('countryDropdown');
+        const dropdown = document.getElementById('countryDropdownStep1');
         if (dropdown) {
             dropdown.classList.remove('show');
         }
@@ -530,7 +590,7 @@ class WanderLogUI {
     }
 
     selectCountry(country) {
-        const input = document.getElementById('countryInput');
+        const input = document.getElementById('countryInputStep1');
         if (input) {
             input.value = country;
         }
@@ -540,18 +600,21 @@ class WanderLogUI {
 
     // City Suggestions
     async suggestCities(autoLoad = false) {
-        const country = document.getElementById('countryInput').value.trim();
+        console.log('[UI] suggestCities called with autoLoad:', autoLoad);
+        const country = document.getElementById('countryInputStep1').value.trim();
         if (!country) {
             this.showMessage('Please enter a country name.');
             return;
         }
+        
+        console.log('[UI] Finding cities for country:', country);
         
         // Show loading with specific message and progress indicator
         this.showLoading('Finding cities and activities for ' + country + '...');
         this.updateStepProgress(1, 'loading');
         
         try {
-            const response = await fetch('http://localhost:8080/api/suggest_cities', {
+            const response = await fetch('http://localhost:8080/wanderlog_ai', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -617,13 +680,13 @@ class WanderLogUI {
     displayCities(cities) {
         console.log(`[UI] 🏙️ displayCities called with ${cities.length} cities:`, cities);
         
-        const container = document.getElementById('citiesContainer');
+        const container = document.getElementById('citiesContainerStep2');
         if (!container) {
-            console.error('[UI] ❌ citiesContainer element not found!');
+            console.error('[UI] ❌ citiesContainerStep2 element not found!');
             return;
         }
         
-        console.log('[UI] ✅ citiesContainer found:', container);
+        console.log('[UI] ✅ citiesContainerStep2 found:', container);
         console.log('[UI] Container current innerHTML before clear:', container.innerHTML);
         
         container.innerHTML = '';
@@ -672,8 +735,8 @@ class WanderLogUI {
             cityCard.classList.add('selected');
             this.selectedCities.push(city);
         }
-        
-        const nextBtn = document.getElementById('nextStepBtn');
+        // Enable/disable the correct Next button for step 2
+        const nextBtn = document.getElementById('nextStepBtnStep2');
         if (nextBtn) {
             nextBtn.disabled = this.selectedCities.length === 0;
         }
@@ -721,11 +784,18 @@ class WanderLogUI {
             }))
         });
 
+        // Temporarily disable initialization to prevent step reset
+        const originalInit = this.init;
+        this.init = () => {
+            console.log('[UI] Skipping init during generateMemoryPrompts');
+            return Promise.resolve();
+        };
+
         this.showLoading('Generating memory prompts for your selected cities...');
         this.updateStepProgress(3, 'loading');
 
         try {
-            const container = document.getElementById('memoryPromptsContainer');
+            const container = document.getElementById('memoryPromptsContainerStep3');
             if (!container) return;
             
             container.innerHTML = '';
@@ -748,7 +818,7 @@ class WanderLogUI {
                         body: JSON.stringify({
                             action: 'generate_memory_prompts',
                             city: city.city,
-                            country: document.getElementById('countryInput').value
+                            country: document.getElementById('countryInputStep1').value
                         }),
                         signal: controller.signal
                     });
@@ -778,11 +848,13 @@ class WanderLogUI {
             this.updateStepProgress(3, 'error');
         } finally {
             this.hideLoading();
+            // Restore original init method
+            this.init = originalInit;
         }
     }
 
     displayCityPrompts(city, prompts, cityIndex) {
-        const container = document.getElementById('memoryPromptsContainer');
+        const container = document.getElementById('memoryPromptsContainerStep3');
         if (!container) return;
         
         // Enhanced safety check for city data
@@ -861,7 +933,7 @@ class WanderLogUI {
                 body: JSON.stringify({
                     action: 'generate_memory_prompts',
                     city: cityName,
-                    country: document.getElementById('countryInput').value
+                    country: document.getElementById('countryInputStep1').value
                 }),
                 signal: controller.signal
             });
@@ -894,7 +966,7 @@ class WanderLogUI {
     async generateNarrative() {
         // Collect user answers from all cities
         this.userAnswers = [];
-        const freeform = document.getElementById('freeformMemory');
+        const freeform = document.getElementById('freeformMemoryStep3');
         if (freeform && freeform.value.trim()) {
             this.userAnswers.push(freeform.value.trim());
         }
@@ -920,8 +992,8 @@ class WanderLogUI {
             const cityNames = this.selectedCities.map(city => city.city).join(', ');
             
             // Get date information
-            const countryMonth = document.getElementById('countryMonth');
-            const countryYear = document.getElementById('countryYear');
+            const countryMonth = document.getElementById('countryMonthStep1');
+            const countryYear = document.getElementById('countryYearStep1');
             const visitDate = countryMonth && countryYear && countryMonth.value && countryYear.value ? 
                 `${countryMonth.value}/${countryYear.value}` : null;
             
@@ -933,11 +1005,10 @@ class WanderLogUI {
                 body: JSON.stringify({
                     action: 'generate_narrative',
                     city: cityNames,
-                    country: document.getElementById('countryInput').value,
+                    country: document.getElementById('countryInputStep1').value,
                     user_answers: this.userAnswers,
                     cities: this.selectedCities.map(city => city.city), // Pass all city names
                     story_length: this.selectedStoryLength, // Add story length parameter
-                    story_layout: this.selectedStoryLayout, // Add story layout parameter
                     story_style: this.selectedStoryStyle || 'original', // Add story style parameter
                     visit_date: visitDate // Add visit date information
                 })
@@ -1004,7 +1075,7 @@ class WanderLogUI {
     updateStoryDetails() {
         const storyCountry = document.getElementById('storyCountry');
         const storyCities = document.getElementById('storyCities');
-        const countryInput = document.getElementById('countryInput');
+        const countryInput = document.getElementById('countryInputStep1');
         
         if (storyCountry && countryInput) {
             storyCountry.textContent = countryInput.value;
@@ -1019,10 +1090,11 @@ class WanderLogUI {
     // Story Style Changes
     async changeStyle(style, btn) {
         if (style === 'original') {
-            // Display original story
-            this.displayFormattedStory(this.generatedNarrative);
+            // Display user responses formatted, no AI
+            this.displayFormattedUserResponses();
             this.currentStyle = 'original';
             this.updateStyleButtons(btn);
+            // Do NOT navigate away or reset the UI
             return;
         }
 
@@ -1084,7 +1156,7 @@ class WanderLogUI {
 
     // Manual City Addition
     addManualCity() {
-        const input = document.getElementById('manualCityInput');
+        const input = document.getElementById('manualCityInputStep2');
         const city = input.value.trim();
         
         if (!city) {
@@ -1113,32 +1185,17 @@ class WanderLogUI {
     // Story Options
     selectStoryLength(length) {
         this.selectedStoryLength = length;
-        
-        // Update button states
-        document.querySelectorAll('.option-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        event.target.classList.add('active');
-    }
-
-    selectLayout(layout) {
-        this.selectedStoryLayout = layout;
-        
-        // Update button states
-        document.querySelectorAll('.option-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+        // Only update active class for length buttons
+        const lengthButtons = document.querySelectorAll('.option-group:nth-child(1) .option-btn');
+        lengthButtons.forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active');
     }
     
-    // Select story style (replaces changeStyle for pre-generation)
     selectStoryStyle(style) {
         this.selectedStoryStyle = style;
-        
-        // Update button states
-        document.querySelectorAll('.option-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+        // Only update active class for style buttons
+        const styleButtons = document.querySelectorAll('.option-group:nth-child(2) .option-btn');
+        styleButtons.forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active');
     }
     
@@ -1175,7 +1232,7 @@ class WanderLogUI {
         console.log('[UI] 🎯 Demo: Filling all memory data...');
         
         // Fill freeform memory with sample content
-        const freeformMemory = document.getElementById('freeformMemory');
+        const freeformMemory = document.getElementById('freeformMemoryStep3');
         if (freeformMemory) {
             freeformMemory.value = `Amazing trip! The food was incredible - especially the street food. The temples were breathtaking and the people were so welcoming. I loved the bustling markets and the peaceful moments by the river. This journey changed my perspective on life and travel. Can't wait to go back!`;
         }
@@ -1212,32 +1269,28 @@ class WanderLogUI {
             this.showMessage('Please generate a story first.');
             return;
         }
-        
         this.showLoading('Saving your story...');
-        
         try {
             const storyData = {
-                country: document.getElementById('countryInput').value,
+                country: document.getElementById('countryInputStep1').value,
                 cities: this.selectedCities.map(city => city.city),
+                city: this.selectedCities[0] ? this.selectedCities[0].city : '', // Save first city for display
                 narrative: this.generatedNarrative,
                 user_answers: this.userAnswers,
                 visit_date: this.getVisitDate(),
                 story_length: this.selectedStoryLength,
-                story_layout: this.selectedStoryLayout,
                 style: this.currentStyle
             };
-            
-            const response = await fetch('http://localhost:8080/api/save_story', {
+            const response = await fetch('http://localhost:8080/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     action: 'save_story',
-                    ...storyData
+                    story_data: storyData
                 })
             });
-            
             const data = await response.json();
             if (response.ok) {
                 this.showMessage('Story saved successfully!', 'success');
@@ -1254,7 +1307,9 @@ class WanderLogUI {
     }
 
     // Finish Story
-    finishStory() {
+    async finishStory() {
+        // Save the story first
+        await this.saveStory();
         this.showMessage('Story creation completed!', 'success');
         this.showPage('stories');
         this.resetForm();
@@ -1268,16 +1323,15 @@ class WanderLogUI {
         this.userAnswers = [];
         this.generatedNarrative = '';
         this.selectedStoryLength = 'detailed';
-        this.selectedStoryLayout = 'classic';
         
         // Reset form elements
-        document.getElementById('countryInput').value = '';
-        document.getElementById('countryMonth').value = '';
-        document.getElementById('countryYear').value = '';
-        document.getElementById('manualCityInput').value = '';
-        document.getElementById('freeformMemory').value = '';
-        document.getElementById('memoryPromptsContainer').innerHTML = '';
-        document.getElementById('citiesContainer').innerHTML = '';
+        document.getElementById('countryInputStep1').value = '';
+        document.getElementById('countryMonthStep1').value = '';
+        document.getElementById('countryYearStep1').value = '';
+        document.getElementById('manualCityInputStep2').value = '';
+        document.getElementById('freeformMemoryStep3').value = '';
+        document.getElementById('memoryPromptsContainerStep3').innerHTML = '';
+        document.getElementById('citiesContainerStep2').innerHTML = '';
         
         // Reset step indicator
         this.updateStepIndicator();
@@ -1286,8 +1340,8 @@ class WanderLogUI {
 
     // Get Visit Date
     getVisitDate() {
-        const month = document.getElementById('countryMonth').value;
-        const year = document.getElementById('countryYear').value;
+        const month = document.getElementById('countryMonthStep1').value;
+        const year = document.getElementById('countryYearStep1').value;
         return month && year ? `${month}/${year}` : null;
     }
 
@@ -1352,7 +1406,7 @@ class WanderLogUI {
         
         // Set all URL parameters FIRST, then show the step
         if (country) {
-            const countryInput = document.getElementById('countryInput');
+            const countryInput = document.getElementById('countryInputStep1');
             if (countryInput) {
                 countryInput.value = country;
             }
@@ -1387,7 +1441,7 @@ class WanderLogUI {
             url.searchParams.delete('page');
             url.searchParams.set('step', this.currentStep.toString());
             
-            const countryInput = document.getElementById('countryInput');
+            const countryInput = document.getElementById('countryInputStep1');
             if (countryInput && countryInput.value) {
                 url.searchParams.set('country', countryInput.value);
             }
@@ -1420,7 +1474,6 @@ class WanderLogUI {
     initStoryOptions() {
         // Set default values
         this.selectedStoryLength = 'detailed';
-        this.selectedStoryLayout = 'classic';
     }
 
     // Initialize Public Profile
@@ -1433,6 +1486,12 @@ class WanderLogUI {
 
     // Initialize Photo Upload
     initializePhotoUpload() {
+        // Skip if already initialized
+        if (this.isInitialized) {
+            console.log('[UI] Skipping initializePhotoUpload - already initialized');
+            return;
+        }
+        
         console.log('[UI] Initializing photo upload...');
         
         // Add drag and drop functionality
@@ -1514,7 +1573,7 @@ class WanderLogUI {
     async loadSavedStories() {
         this.showLoading('Loading your stories...');
         try {
-            const response = await fetch('http://localhost:8080/stories', {
+            const response = await fetch(`http://localhost:8080/stories?t=${Date.now()}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1566,7 +1625,17 @@ class WanderLogUI {
 
         // Create country cards
         const cardsHTML = Object.entries(storiesByCountry).map(([country, stories]) => {
-            const totalCities = stories.length;
+            // Collect all unique cities across all stories for this country
+            const allCities = new Set();
+            stories.forEach(story => {
+                if (Array.isArray(story.cities)) {
+                    story.cities.forEach(city => allCities.add(city));
+                } else if (story.city) {
+                    allCities.add(story.city);
+                }
+            });
+            const totalCities = allCities.size;
+            console.log(`[DEBUG] Country: ${country}, allCities:`, Array.from(allCities), 'totalCities:', totalCities);
             const totalWords = stories.reduce((sum, story) => sum + (story.narrative ? story.narrative.split(' ').length : 0), 0);
             const flagEmoji = this.getCountryFlag(country);
             
@@ -1768,17 +1837,42 @@ class WanderLogUI {
             this.showMessage('No stories found for this country.');
             return;
         }
-        
-        // For now, show a simple modal with the stories
-        const storyList = countryStories.map(story => `
-            <div class="story-item" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
-                <h4>${story.city || 'Unknown City'}</h4>
-                <p><strong>Date:</strong> ${this.formatVisitDate(story.visit_date) || 'Not specified'}</p>
-                <div style="max-height: 200px; overflow-y: auto; margin-top: 10px;">
-                    ${story.narrative || 'No story content'}
+        // Use markdown rendering for narrative
+        const renderMarkdown = (narrative) => {
+            if (!narrative) return '';
+            let formatted = narrative
+                .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .split('\n\n')
+                .map(paragraph => {
+                    if (paragraph.startsWith('<h3>')) return paragraph;
+                    return paragraph.trim() ? `<p>${paragraph.trim()}</p>` : '';
+                })
+                .filter(p => p)
+                .join('\n');
+            return formatted;
+        };
+        const storyList = countryStories.map(story => {
+            // Show all cities for this story (comma-separated)
+            let cityNames = '';
+            if (Array.isArray(story.cities) && story.cities.length > 0) {
+                cityNames = story.cities.join(', ');
+            } else if (story.city) {
+                cityNames = story.city;
+            } else {
+                cityNames = 'Unknown City';
+            }
+            return `
+                <div class="story-item" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
+                    <h4>${cityNames}</h4>
+                    <p><strong>Date:</strong> ${this.formatVisitDate(story.visit_date) || 'Not specified'}</p>
+                    <div style="max-height: 200px; overflow-y: auto; margin-top: 10px;">
+                        ${renderMarkdown(story.narrative) || 'No story content'}
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
         // Create a simple modal to display stories
         const modal = document.createElement('div');
@@ -1815,7 +1909,7 @@ class WanderLogUI {
     addToCountry(country) {
         // Navigate to create page and pre-fill the country
         this.showPage('create');
-        const countryInput = document.getElementById('countryInput');
+        const countryInput = document.getElementById('countryInputStep1');
         if (countryInput) {
             countryInput.value = country;
         }
@@ -1948,7 +2042,7 @@ class WanderLogUI {
         }
         
         if (country) {
-            const countryInput = document.getElementById('countryInput');
+            const countryInput = document.getElementById('countryInputStep1');
             if (countryInput) {
                 countryInput.value = country;
             }
@@ -2132,6 +2226,32 @@ class WanderLogUI {
 
     // Call this at the end of loadSavedStories and after map.loadVisitedCountries
     // ... existing code ...
+
+    showAuthModal() {
+        const modal = document.getElementById('authModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    // Add a new method to format and display user responses
+    displayFormattedUserResponses() {
+        // Format user answers as a readable summary
+        let html = '<div class="user-answers-summary">';
+        this.userAnswers.forEach((answer, idx) => {
+            html += `<div class='user-answer'><b>Q${idx+1}:</b> ${answer}</div>`;
+        });
+        html += '</div>';
+        const editableStory = document.getElementById('editableStory');
+        if (editableStory) {
+            editableStory.innerHTML = html;
+            // Ensure the story container is visible
+            const storyContainer = document.getElementById('storyContainer');
+            if (storyContainer) {
+                storyContainer.style.display = 'block';
+            }
+        }
+    }
 }
 
 // Global Functions for HTML onclick handlers
@@ -2139,8 +2259,11 @@ class WanderLogUI {
 
 // Step Navigation
 function nextStep() {
+    console.log('[UI] Global nextStep() function called');
     if (window.wanderLogApp && window.wanderLogApp.ui) {
         window.wanderLogApp.ui.nextStep();
+    } else {
+        console.error('[UI] wanderLogApp or UI not available');
     }
 }
 
@@ -2213,12 +2336,6 @@ function changeStyle(style, btn) {
 function selectStoryLength(length) {
     if (window.wanderLogApp && window.wanderLogApp.ui) {
         window.wanderLogApp.ui.selectStoryLength(length);
-    }
-}
-
-function selectLayout(layout) {
-    if (window.wanderLogApp && window.wanderLogApp.ui) {
-        window.wanderLogApp.ui.selectLayout(layout);
     }
 }
 

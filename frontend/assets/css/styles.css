@@ -2396,19 +2396,30 @@ mark {
 }
 
 .date-input {
-  flex: 1;
-  min-width: 0; /* Allow inputs to shrink if needed */
+  appearance: none;
+  -webkit-appearance: none;
+  background: #fff;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 36px 10px 14px;
+  font-size: 1rem;
+  font-family: 'Inter', sans-serif;
+  color: #333;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(102, 126, 234, 0.06);
+  min-width: 140px;
+  cursor: pointer;
+  position: relative;
 }
 
-@media (max-width: 600px) {
-  .date-input-group {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .date-input {
-    width: 100%;
-  }
+.date-input:focus {
+  border-color: #764ba2;
+  box-shadow: 0 0 0 2px rgba(118, 75, 162, 0.15);
+}
+
+.date-input::-ms-expand {
+  display: none;
 }
 
 /* Story Preview in Step 5 */
@@ -2810,4 +2821,10 @@ mark {
         min-width: none !important;
         width: auto !important;
     }
+}
+
+/* --- Footer Text Styling --- */
+.footer-text {
+  color: white !important;
+  text-align: center;
 }

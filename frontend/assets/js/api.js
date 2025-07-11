@@ -1,7 +1,7 @@
 // API Module - Handles all backend communication
 class WanderLogAPI {
     constructor() {
-        this.baseURL = 'http://localhost:8080/api';
+        this.baseURL = 'http://localhost:8080/wanderlog_ai';
     }
 
     async makeRequest(data, method = 'POST') {
@@ -86,23 +86,10 @@ class WanderLogAPI {
 
     // Get all saved stories
     async getStories() {
-        try {
-            const response = await fetch('http://localhost:8080/stories', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Failed to get stories:', error);
-            throw error;
-        }
+        const data = {
+            action: 'get_stories'
+        };
+        return await this.makeRequest(data);
     }
 
     // Map-related APIs

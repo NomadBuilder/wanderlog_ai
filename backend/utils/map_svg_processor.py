@@ -7,7 +7,7 @@ Handles SVG map manipulation and country highlighting
 import re
 import json
 from typing import Dict, List, Optional, Tuple
-from map_country_mapping import CountryMapper
+from utils.map_country_mapping import CountryMapper
 
 class SVGMapProcessor:
     """Processes SVG world map and highlights visited countries"""

@@ -4,7 +4,7 @@
 Easy integration of map modules into WanderLog AI
 """
 
-from map_integration import MapIntegration
+from .map_integration import MapIntegration
 import json
 
 def setup_map_for_wanderlog():
@@ -46,7 +46,7 @@ def get_integration_code():
     integration_code = '''
 # Add this to your main.py or app.py
 
-from map_integration import MapIntegration
+from .map_integration import MapIntegration
 
 # Initialize map integration (do this once at startup)
 map_integration = MapIntegration()

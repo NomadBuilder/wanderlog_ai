@@ -10,21 +10,46 @@ import sqlite3
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
 # === 🗺️ MAP INTEGRATION ===
 from utils.map_integration import *
 
+# Resolve SVG path relative to project root
+svg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "assets", "maps", "world-map.svg")
+
 # Initialize map integration (do this once at startup)
 map_integration = MapIntegration()
-map_integration.initialize_map()
+map_integration.initialize_map(svg_path)
 
-# === ✅ CONFIG ===
-GEMINI_API_KEY = "AIzaSyCuAnb43KSc4knN6QUzD8fVtYQfn5W1bmQ"
+# === Load environment variables from .env if present ===
+load_dotenv()
+
+# === ✅ CONFIG (from environment) ===
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+TRAVEL_DATA_BUCKET = os.environ.get("TRAVEL_DATA_BUCKET")
+STORIES_BUCKET = os.environ.get("STORIES_BUCKET")
+DB_PATH = os.environ.get("DB_PATH", "wanderlog_users.db")
+
+# Gemini API URL (constructed from key)
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}"
 
+# Check required variables
+missing_vars = []
+if not GEMINI_API_KEY:
+    missing_vars.append("GEMINI_API_KEY")
+if not TRAVEL_DATA_BUCKET:
+    missing_vars.append("TRAVEL_DATA_BUCKET")
+if not STORIES_BUCKET:
+    missing_vars.append("STORIES_BUCKET")
+if missing_vars:
+    raise RuntimeError(f"Missing required environment variables: {', '.join(missing_vars)}. Please set them in your .env file or environment.")
+
+# Remove old hardcoded config assignments below this point
+
 # Storage buckets for WanderLog AI
-TRAVEL_DATA_BUCKET = "wanderlog-ai-data"
-STORIES_BUCKET = "wanderlog-ai-stories"
+# TRAVEL_DATA_BUCKET = "wanderlog-ai-data"
+# STORIES_BUCKET = "wanderlog-ai-stories"
 
 # Initialize storage client with fallback
 storage_client = None
@@ -45,7 +70,7 @@ except Exception as e:
     use_cloud_storage = False
 
 # Local storage directory
-LOCAL_STORAGE_DIR = "data/stories"
+LOCAL_STORAGE_DIR = "backend/data/stories"
 if not os.path.exists(LOCAL_STORAGE_DIR):
     os.makedirs(LOCAL_STORAGE_DIR)
 
@@ -449,9 +474,11 @@ def wanderlog_ai(request):
                                     stories.append(story_data)
                     except Exception as e:
                         print(f"Error reading local stories: {e}")
+                # Filter out stories with missing/empty/undefined country
+                filtered_stories = [s for s in stories if s.get('country') and str(s.get('country')).strip().lower() not in ('', 'undefined', 'none', 'null')]
                 response_data = {
-                    "stories": stories,
-                    "count": len(stories),
+                    "stories": filtered_stories,
+                    "count": len(filtered_stories),
                     "success": True
                 }
                 response = make_response(json.dumps(response_data), 200, {'Content-Type': 'application/json'})
@@ -861,10 +888,12 @@ def get_stories(request_json):
         
         # Sort by timestamp (newest first)
         stories.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        
+
+        # Filter out stories with missing/empty/undefined country
+        filtered_stories = [s for s in stories if s.get('country') and str(s.get('country')).strip().lower() not in ('', 'undefined', 'none', 'null')]
         response = make_response(json.dumps({
-            "stories": stories,
-            "count": len(stories)
+            "stories": filtered_stories,
+            "count": len(filtered_stories)
         }))
         return response
         

@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WanderLog AI - Splash</title>
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="/wanderlog_ai/assets/css/styles.css?v=3">
   <style>
-    html, body {
+    /* Reset only for splash page content, not global html/body */
+    .splash-page {
       height: 100%;
       margin: 0;
       padding: 0;
@@ -16,7 +17,7 @@
       font-family: 'Inter', Arial, sans-serif;
       overflow-x: hidden;
     }
-    body {
+    .splash-page {
       min-height: 100vh;
       min-width: 100vw;
       /* Remove flex from body to allow vertical stacking */
@@ -632,7 +633,7 @@
     }
   </style>
 </head>
-<body>
+<body class="splash-page">
   <!-- Lightbox modal -->
   <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">&times;</button>

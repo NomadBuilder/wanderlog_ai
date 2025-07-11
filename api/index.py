@@ -63,8 +63,13 @@ svg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", 
 # Initialize map integration (do this once at startup)
 try:
     map_integration = MapIntegration()
-    map_integration.initialize_map(svg_path)
-    print("✅ Map integration initialized successfully")
+    # Check if SVG file exists before trying to initialize
+    if os.path.exists(svg_path):
+        map_integration.initialize_map(svg_path)
+        print("✅ Map integration initialized successfully")
+    else:
+        print(f"⚠️ SVG file not found at {svg_path}")
+        map_integration = None
 except Exception as e:
     print(f"⚠️ Map integration failed: {e}")
     # Create a minimal map integration for fallback

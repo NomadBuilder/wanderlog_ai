@@ -1,9 +1,12 @@
 // API Module - Handles all backend communication
 class WanderLogAPI {
     constructor() {
-        // Use relative URL for production (Vercel) or localhost for development
+        // Determine API base URL
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        this.baseURL = isLocalhost ? 'http://localhost:8080/wanderlog_ai' : '/api/wanderlog_ai';
+        const API_BASE_URL = isLocalhost
+            ? 'http://localhost:8080/api'
+            : '/wanderlog_ai/api';
+        this.baseURL = API_BASE_URL;
     }
 
     async makeRequest(data, method = 'POST') {

@@ -9,6 +9,13 @@ class WanderLogUI {
         console.log('[UI] WanderLogUI constructor called');
         console.trace();
         WanderLogUI._instance = this;
+        
+        // Determine API base URL
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        this.API_BASE_URL = isLocalhost
+            ? 'http://localhost:8080/api'
+            : '/wanderlog_ai/api';
+        
         this.currentPage = 'create';
         this.stories = [];
         this.filteredStories = [];
@@ -580,7 +587,7 @@ class WanderLogUI {
         this.updateStepProgress(1, 'loading');
         
         try {
-            const response = await fetch('http://localhost:8080/wanderlog_ai', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -900,7 +907,7 @@ class WanderLogUI {
                 `${countryMonth.value}/${countryYear.value}` : null;
             
             const tApi0 = performance.now();
-            const response = await fetch('http://localhost:8080/api/generate_narrative', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -994,7 +1001,7 @@ class WanderLogUI {
         this.showLoading();
 
         try {
-            const response = await fetch('http://localhost:8080/api/change_style', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1175,7 +1182,7 @@ class WanderLogUI {
                 style: this.currentStyle,
                 photos: this.uploadedPhotos.slice(0, 3) // Save up to 3 photos
             };
-            const response = await fetch('http://localhost:8080/', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1337,6 +1344,11 @@ class WanderLogUI {
 
     // Update URL with current state
     updateURL() {
+        // Get the current URL and ensure we preserve the /wanderlog_ai base path
+        const currentPath = window.location.pathname;
+        const basePath = currentPath.startsWith('/wanderlog_ai') ? '/wanderlog_ai' : '';
+        
+        // Create URL relative to the current domain
         const url = new URL(window.location);
         
         if (this.currentPage === 'create') {
@@ -1368,6 +1380,11 @@ class WanderLogUI {
             url.searchParams.delete('manualCities');
             url.searchParams.delete('selectedCities');
             url.searchParams.set('page', this.currentPage);
+        }
+        
+        // Ensure the pathname includes the base path for subdirectory deployment
+        if (basePath && !url.pathname.startsWith(basePath)) {
+            url.pathname = basePath + url.pathname;
         }
         
         window.history.pushState({}, '', url);
@@ -1930,7 +1947,7 @@ class WanderLogUI {
         
         this.showLoading('Deleting stories...');
         try {
-            const response = await fetch('http://localhost:8080/api', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2037,7 +2054,7 @@ class WanderLogUI {
         }
         
         try {
-            const response = await fetch('http://localhost:8080/api/validate_session', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2087,7 +2104,7 @@ class WanderLogUI {
     
     async register(email, password, name) {
         try {
-            const response = await fetch('http://localhost:8080/api/register', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2114,7 +2131,7 @@ class WanderLogUI {
     
     async login(email, password) {
         try {
-            const response = await fetch('http://localhost:8080/api/login', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2145,7 +2162,7 @@ class WanderLogUI {
     async logout() {
         try {
             if (this.sessionToken) {
-                await fetch('http://localhost:8080/api/logout', {
+                await fetch(this.API_BASE_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2243,7 +2260,7 @@ class WanderLogUI {
     // Fetch city suggestions (returns Promise)
     async fetchCitySuggestions(country) {
         try {
-            const response = await fetch('http://localhost:8080/wanderlog_ai', {
+            const response = await fetch(this.API_BASE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'suggest_cities', country })

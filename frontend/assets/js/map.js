@@ -566,7 +566,8 @@ class WanderLogMap {
             window.wanderLogApp.ui.addToCountry(countryName);
         } else {
             // Fallback - redirect to create page with country pre-filled
-            window.location.href = `/?country=${encodeURIComponent(countryName)}`;
+            const basePath = window.location.pathname.startsWith('/wanderlog_ai') ? '/wanderlog_ai' : '';
+            window.location.href = `${basePath}/?country=${encodeURIComponent(countryName)}`;
         }
     }
 
@@ -661,7 +662,8 @@ class WanderLogMap {
             this.hideTooltip(); // Ensure tooltip is closed
         } else {
             // Fallback - simple redirect
-            window.location.href = `/?country=${encodeURIComponent(countryName)}`;
+            const basePath = window.location.pathname.startsWith('/wanderlog_ai') ? '/wanderlog_ai' : '';
+            window.location.href = `${basePath}/?country=${encodeURIComponent(countryName)}`;
         }
     }
 

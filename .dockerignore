@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+venv/
+# frontend/  # Commented out to allow frontend/assets in Docker build
+api/
+data/ 

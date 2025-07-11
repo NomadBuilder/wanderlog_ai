@@ -1,28 +1,57 @@
-import os
-import functions_framework
-import json
-from google.cloud import storage
-import requests
-from datetime import datetime
-from flask import make_response, send_from_directory
-import uuid
-import sqlite3
-import hashlib
-import secrets
-from datetime import datetime, timedelta
-from dotenv import load_dotenv
-from functools import wraps
-import time
+print('=== WANDERLOG API MAIN.PY LOADED (TOP OF FILE) ===')
+import sys
+print('Python version:', sys.version)
+
+try:
+    import os
+    print('import os: OK')
+    import json
+    print('import json: OK')
+    import time
+    print('import time: OK')
+    import traceback
+    print('import traceback: OK')
+    import threading
+    print('import threading: OK')
+    import functools
+    print('import functools: OK')
+    import sqlite3
+    print('import sqlite3: OK')
+    import secrets
+    print('import secrets: OK')
+    import hashlib
+    print('import hashlib: OK')
+    import requests
+    print('import requests: OK')
+    import uuid
+    print('import uuid: OK')
+    from datetime import datetime, timedelta
+    print('import datetime: OK')
+    from functools import wraps
+    print('import functools.wraps: OK')
+    from flask import Flask, request, jsonify, send_from_directory, make_response
+    print('import flask: OK')
+    import functions_framework
+    print('import functions_framework: OK')
+    from utils.map_integration import get_country_svg, get_country_centroid
+    print('import utils.map_integration: OK')
+    from utils.map_country_mapping import CountryMapper
+    print('import utils.map_country_mapping: OK')
+    from utils.map_svg_processor import SVGMapProcessor
+    print('import utils.map_svg_processor: OK')
+    from utils.map_setup import setup_map_for_wanderlog
+    print('import utils.map_setup: OK')
+    from dotenv import load_dotenv
+    print('import dotenv: OK')
+    from google.cloud import storage
+    print('import google.cloud.storage: OK')
+except Exception as e:
+    print('IMPORT ERROR:', e)
+    raise
 
 # === Vercel/Serverless: Handle GOOGLE_APPLICATION_CREDENTIALS_JSON ===
 if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON"):
-    # Use /tmp for Vercel, local temp file for development
-    if os.path.exists("/tmp"):
-        creds_path = "/tmp/credentials.json"
-    else:
-        import tempfile
-        creds_path = os.path.join(tempfile.gettempdir(), "credentials.json")
-    
+    creds_path = "/tmp/credentials.json"
     with open(creds_path, "w") as f:
         f.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
@@ -34,8 +63,14 @@ from utils.map_integration import *
 svg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "assets", "maps", "world-map.svg")
 
 # Initialize map integration (do this once at startup)
-map_integration = MapIntegration()
-map_integration.initialize_map(svg_path)
+try:
+    map_integration = MapIntegration()
+    map_integration.initialize_map(svg_path)
+    print("✅ Map integration initialized successfully")
+except Exception as e:
+    print(f"⚠️ Map integration failed: {e}")
+    # Create a minimal map integration for fallback
+    map_integration = None
 
 # === Load environment variables from .env if present ===
 load_dotenv()
@@ -86,15 +121,28 @@ except Exception as e:
 
 # Local storage directory
 LOCAL_STORAGE_DIR = "backend/data/stories"
-if not os.path.exists(LOCAL_STORAGE_DIR):
-    os.makedirs(LOCAL_STORAGE_DIR)
+# Only create directory if we're not on Vercel (read-only filesystem)
+if not os.environ.get('VERCEL'):
+    if not os.path.exists(LOCAL_STORAGE_DIR):
+        try:
+            os.makedirs(LOCAL_STORAGE_DIR)
+        except OSError:
+            # If we can't create the directory, we'll use in-memory storage
+            pass
 
 # === 🔐 USER DATABASE SETUP ===
 DB_PATH = "wanderlog_users.db"
 
+def get_db_connection():
+    """Get database connection, using in-memory on Vercel"""
+    if os.environ.get('VERCEL'):
+        return sqlite3.connect(':memory:')
+    else:
+        return sqlite3.connect(DB_PATH)
+
 def init_database():
     """Initialize SQLite database with user tables"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Users table
@@ -159,7 +207,7 @@ def generate_session_token():
 def create_user(email, password, name):
     """Create a new user account"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Check if user already exists
@@ -196,7 +244,7 @@ def create_user(email, password, name):
 def authenticate_user(email, password):
     """Authenticate user and create session"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get user
@@ -243,7 +291,7 @@ def authenticate_user(email, password):
 def validate_session(session_token):
     """Validate session token and return user info"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -273,7 +321,7 @@ def validate_session(session_token):
 def logout_user(session_token):
     """Logout user by removing session"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM user_sessions WHERE session_token = ?", (session_token,))
         conn.commit()
@@ -386,7 +434,7 @@ def handle_get_profile(request_json):
     
     # Get user preferences
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
             SELECT default_story_length, default_story_style, public_profile 
@@ -467,7 +515,7 @@ def wanderlog_ai(request):
                 # For GET requests, we don't need to parse JSON
                 # Just return all stories
                 stories = []
-                if use_cloud_storage and storage_client:
+                if (use_cloud_storage and storage_client):
                     try:
                         bucket = storage_client.bucket(STORIES_BUCKET)
                         blobs = bucket.list_blobs(prefix='stories/')
@@ -841,7 +889,7 @@ def save_story(request_json):
     
     # Try cloud storage first, then fallback to local
     cloud_error = None
-    if use_cloud_storage and storage_client:
+    if (use_cloud_storage and storage_client):
         try:
             # Save to Google Cloud Storage
             bucket = storage_client.bucket(STORIES_BUCKET)
@@ -881,7 +929,7 @@ def get_stories(request_json):
     try:
         stories = []
         
-        if use_cloud_storage and storage_client:
+        if (use_cloud_storage and storage_client):
             # Get from Google Cloud Storage
             bucket = storage_client.bucket(STORIES_BUCKET)
             blobs = bucket.list_blobs(prefix="stories/")
@@ -1029,7 +1077,7 @@ def delete_stories_by_country(request_json):
         
         deleted_count = 0
         
-        if use_cloud_storage and storage_client:
+        if (use_cloud_storage and storage_client):
             # Delete from Google Cloud Storage
             bucket = storage_client.bucket(STORIES_BUCKET)
             blobs = bucket.list_blobs(prefix="stories/")
@@ -1095,4 +1143,22 @@ def cache_response(expiry_seconds=300):
             
             return result
         return wrapper
-    return decorator 
+    return decorator
+
+# === VERCEL COMPATIBILITY ===
+# Vercel expects a function named 'handler' by default
+@functions_framework.http
+def handler(request):
+    try:
+        print("=== HANDLER CALLED ===")
+        # Simple test response
+        response = make_response(json.dumps({"status": "success", "message": "API is working"}), 200)
+        response.headers['Content-Type'] = 'application/json'
+        print("=== HANDLER SUCCESS ===")
+        return response
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"=== HANDLER ERROR: {e} ===")
+        print(f"=== TRACEBACK: {tb} ===")
+        # Return stack trace in response for debugging
+        return (f"Exception: {e}\n\nTraceback:\n{tb}", 500, {"Content-Type": "text/plain"}) 

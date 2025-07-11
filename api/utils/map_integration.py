@@ -205,6 +205,14 @@ class MapIntegration:
         """Return a list of visited country ISO codes from stories"""
         return self.country_mapper.get_visited_countries_from_stories(stories)
 
+def get_country_svg(*args, **kwargs):
+    """Backward-compatible function to get highlighted SVG map."""
+    return MapIntegration().get_highlighted_map(*args, **kwargs)
+
+def get_country_centroid(country_name):
+    """Backward-compatible function to get the centroid of a country."""
+    return MapIntegration().country_mapper.get_country_centroid(country_name)
+
 def main():
     """Main function for testing"""
     integration = MapIntegration()

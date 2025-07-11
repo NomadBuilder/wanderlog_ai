@@ -549,7 +549,7 @@ class WanderLogMap {
         this.hideStickyPanel();
         
         // Use the UI module's viewCountryStories function if available
-        if (window.wanderLogApp && window.wanderLogApp.ui && window.wanderLogApp.ui.viewCountryStories) {
+        if (window.wanderLogApp && (window.wanderLogApp.ui && window.wanderLogApp.ui.viewCountryStories)) {
             window.wanderLogApp.ui.viewCountryStories(countryName);
         } else {
             // Fallback - show simple alert
@@ -562,7 +562,7 @@ class WanderLogMap {
         this.hideStickyPanel();
         
         // Use the UI module's addToCountry function if available
-        if (window.wanderLogApp && window.wanderLogApp.ui && window.wanderLogApp.ui.addToCountry) {
+        if (window.wanderLogApp && (window.wanderLogApp.ui && window.wanderLogApp.ui.addToCountry)) {
             window.wanderLogApp.ui.addToCountry(countryName);
         } else {
             // Fallback - redirect to create page with country pre-filled
@@ -620,7 +620,7 @@ class WanderLogMap {
 
     getStoriesForCountry(countryName) {
         // Get stories from the UI module if available
-        if (window.wanderLogApp && window.wanderLogApp.ui && window.wanderLogApp.ui.stories) {
+        if (window.wanderLogApp && (window.wanderLogApp.ui && window.wanderLogApp.ui.stories)) {
             return window.wanderLogApp.ui.stories.filter(story => 
                 story.country && story.country.toLowerCase().includes(countryName.toLowerCase())
             );

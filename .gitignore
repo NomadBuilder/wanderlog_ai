@@ -63,3 +63,4 @@ local_stories/
 # Temporary files
 *.tmp
 *.temp 
+.vercel

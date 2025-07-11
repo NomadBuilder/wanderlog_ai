@@ -332,7 +332,7 @@ class WanderLogUI {
         if (this.currentStep === 2) {
             const countryInput = document.getElementById('countryInputStep1');
             const citiesContainer = document.getElementById('citiesContainerStep2');
-            if (countryInput && countryInput.value && citiesContainer && citiesContainer.children.length === 0) {
+            if (countryInput && countryInput.value && (citiesContainer && citiesContainer.children.length === 0)) {
                 const country = countryInput.value.trim();
                 // Use cache if available
                 if (this.citySuggestionsCache[country]) {
@@ -896,7 +896,7 @@ class WanderLogUI {
             // Get date information
             const countryMonth = document.getElementById('countryMonthStep1');
             const countryYear = document.getElementById('countryYearStep1');
-            const visitDate = countryMonth && countryYear && countryMonth.value && countryYear.value ? 
+            const visitDate = (countryMonth && countryYear && countryMonth.value && countryYear.value) ? 
                 `${countryMonth.value}/${countryYear.value}` : null;
             
             const tApi0 = performance.now();
@@ -3039,7 +3039,7 @@ function validateStory(story) {
 
 // Global function for memory prompts (must be defined before UI checks)
 function generateMemoryPrompts() {
-    if (window.wanderLogApp && window.wanderLogApp.ui && window.wanderLogApp.ui.generateMemoryPrompts) {
+    if (window.wanderLogApp && (window.wanderLogApp.ui && window.wanderLogApp.ui.generateMemoryPrompts)) {
         window.wanderLogApp.ui.generateMemoryPrompts();
     } else {
         console.warn('[UI] generateMemoryPrompts not available');

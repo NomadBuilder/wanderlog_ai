@@ -1,7 +1,9 @@
 // API Module - Handles all backend communication
 class WanderLogAPI {
     constructor() {
-        this.baseURL = 'http://localhost:8080/wanderlog_ai';
+        // Use relative URL for production (Vercel) or localhost for development
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        this.baseURL = isLocalhost ? 'http://localhost:8080/wanderlog_ai' : '/api/wanderlog_ai';
     }
 
     async makeRequest(data, method = 'POST') {
@@ -40,10 +42,10 @@ class WanderLogAPI {
     }
 
     // Generate memory prompts for selected cities
-    async generateMemoryPrompts(cities, country) {
+    async generateMemoryPrompts(city, country) {
         const data = {
             action: 'generate_memory_prompts',
-            cities: cities,
+            city: city,
             country: country
         };
         return await this.makeRequest(data);

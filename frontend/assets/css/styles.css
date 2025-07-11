@@ -2291,11 +2291,13 @@ mark {
 .photo-upload-section {
   border: 2px dashed #e2e8f0;
   border-radius: 8px;
-  padding: 30px;
+  padding: 14px 10px;
   text-align: center;
   background: #f8fafc;
   transition: all 0.3s ease;
   cursor: pointer;
+  max-width: 600px;
+  margin: 0 auto 18px auto;
 }
 
 .photo-upload-section:hover {
@@ -2308,25 +2310,25 @@ mark {
 }
 
 .photo-upload-icon {
-  font-size: 48px;
+  font-size: 32px;
   color: #94a3b8;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .photo-upload-text {
   color: #64748b;
-  margin-bottom: 16px;
-  font-size: 16px;
+  margin-bottom: 8px;
+  font-size: 15px;
 }
 
 .photo-upload-btn {
   background: #3b82f6;
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 7px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   transition: background 0.3s ease;
 }
 

@@ -35,7 +35,7 @@ class WanderLogApp {
         } else {
             console.log('[APP] Creating new WanderLogUI instance');
             console.trace();
-            this.ui = new WanderLogUI();
+        this.ui = new WanderLogUI();
             window.wanderLogUI = this.ui;
         }
         

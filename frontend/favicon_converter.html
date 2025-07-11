@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Favicon Converter</title>
+</head>
+<body>
+    <canvas id="canvas" width="32" height="32" style="border:1px solid black;"></canvas>
+    <br>
+    <a id="download" download="favicon.ico">Download Favicon</a>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create a temporary image to load the SVG
+        const img = new Image();
+        img.onload = function() {
+            // Draw the SVG onto the canvas
+            ctx.drawImage(img, 0, 0, 32, 32);
+            
+            // Convert to favicon format
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                document.getElementById('download').href = url;
+            }, 'image/x-icon');
+        };
+        
+        // Load the SVG
+        img.src = 'assets/images/globe.svg';
+    </script>
+</body>
+</html> 

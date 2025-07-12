@@ -6,7 +6,7 @@ class WanderLogAPI {
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const API_BASE_URL = isLocalhost
             ? 'http://localhost:8080/api'
-            : 'https://us-central1-basic-zenith-358318.cloudfunctions.net/wanderlog_ai';
+            : 'https://us-central1-ai-test-394019.cloudfunctions.net/wanderlog_ai';
         this.baseURL = API_BASE_URL;
     }
 

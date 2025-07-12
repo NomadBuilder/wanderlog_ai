@@ -30,12 +30,8 @@ if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON"):
 # === 🗺️ MAP INTEGRATION ===
 from utils.map_integration import *
 
-# Resolve SVG path relative to project root
-svg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "assets", "maps", "world-map.svg")
-
-# Initialize map integration (do this once at startup)
-map_integration = MapIntegration()
-map_integration.initialize_map(svg_path)
+# Initialize map integration (will be set up after storage client is available)
+map_integration = None
 
 # === Load environment variables from .env if present ===
 load_dotenv()
@@ -136,6 +132,31 @@ def init_database():
 
 # Initialize database on startup
 init_database()
+
+# === 🗺️ MAP INITIALIZATION ===
+# Initialize map integration after storage client is available
+try:
+    map_integration = MapIntegration()
+    
+    # Always try to load from Google Cloud Storage first, even if storage client failed
+    try:
+        # Create a new storage client specifically for the frontend bucket
+        frontend_storage_client = storage.Client()
+        bucket = frontend_storage_client.bucket("wanderlog-ai-frontend")
+        blob = bucket.blob("assets/maps/world-map.svg")
+        svg_content = blob.download_as_text()
+        map_integration.initialize_map_from_content(svg_content)
+        print("✅ Map initialized from Google Cloud Storage")
+    except Exception as e:
+        print(f"⚠️ Failed to load SVG from Cloud Storage: {e}")
+        # Fallback to local path
+        svg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "assets", "maps", "world-map.svg")
+        map_integration.initialize_map(svg_path)
+        print("✅ Map initialized from local file")
+except Exception as e:
+    print(f"❌ Failed to initialize map: {e}")
+    # Continue without map functionality
+    map_integration = None
 
 # === 🔐 AUTHENTICATION HELPER FUNCTIONS ===
 def hash_password(password):
@@ -562,7 +583,7 @@ def wanderlog_ai(request):
             stories_response = get_stories({})
             stories_data = json.loads(stories_response.get_data(as_text=True))
             stories = stories_data.get("stories", [])
-            visited_countries = map_integration.get_visited_countries(stories)
+            visited_countries = map_integration.get_visited_countries(stories) if map_integration else []
             response = make_response(json.dumps({"visited_countries": visited_countries}))
             response.headers['Content-Type'] = 'application/json'
             return add_cors_headers(response)
@@ -906,20 +927,27 @@ def get_stories(request_json):
 
         # Filter out stories with missing/empty/undefined country
         filtered_stories = [s for s in stories if s.get('country') and str(s.get('country')).strip().lower() not in ('', 'undefined', 'none', 'null')]
-        response = make_response(json.dumps({
+        
+        response_data = {
             "stories": filtered_stories,
-            "count": len(filtered_stories)
-        }))
+            "count": len(filtered_stories),
+            "success": True
+        }
+        response = make_response(json.dumps(response_data))
+        response.headers['Content-Type'] = 'application/json'
         return response
         
     except Exception as e:
         print(f"Error retrieving stories: {str(e)}")
-        response = make_response(json.dumps({
+        response_data = {
             "stories": [],
             "count": 0,
-            "error": str(e)
-        }))
-        return response 
+            "error": str(e),
+            "success": False
+        }
+        response = make_response(json.dumps(response_data))
+        response.headers['Content-Type'] = 'application/json'
+        return response
 
 # === 🗺️ MAP FUNCTIONS ===
 
@@ -932,6 +960,9 @@ def get_highlighted_map(request_json):
         stories = stories_data.get("stories", [])
         
         # Get highlighted map
+        if not map_integration:
+            response = make_response(json.dumps({"error": "Map integration not available"}), 500)
+            return response
         highlighted_svg = map_integration.get_highlighted_map(stories)
         
         response = make_response(highlighted_svg)
@@ -952,6 +983,9 @@ def get_map_statistics(request_json):
         stories = stories_data.get("stories", [])
         
         # Load stories into map integration
+        if not map_integration:
+            response = make_response(json.dumps({"error": "Map integration not available"}), 500)
+            return response
         map_integration.load_stories(stories)
         stats = map_integration.get_map_statistics()
         
@@ -972,6 +1006,9 @@ def export_map_data(request_json):
         stories = stories_data.get("stories", [])
         
         # Load stories into map integration
+        if not map_integration:
+            response = make_response(json.dumps({"error": "Map integration not available"}), 500)
+            return response
         map_integration.load_stories(stories)
         
         # Get export format
@@ -1004,6 +1041,9 @@ def get_country_details(request_json):
         stories = stories_data.get("stories", [])
         
         # Load stories into map integration
+        if not map_integration:
+            response = make_response(json.dumps({"error": "Map integration not available"}), 500)
+            return response
         map_integration.load_stories(stories)
         details = map_integration.get_country_details(country_name)
         

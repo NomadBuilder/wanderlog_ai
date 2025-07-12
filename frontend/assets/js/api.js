@@ -1,4 +1,5 @@
 // API Module - Handles all backend communication
+// Updated: 2025-07-12 - Fixed production API endpoint
 class WanderLogAPI {
     constructor() {
         // Determine API base URL

@@ -53,9 +53,18 @@ class WanderLogMap {
 
     async loadMap() {
         try {
-            // Get the correct base path for production vs local development
-            const basePath = window.location.pathname.startsWith('/wanderlog_ai') ? '/wanderlog_ai' : '';
-            const response = await fetch(`${basePath}/assets/maps/world-map.svg`);
+            // Get the correct map URL for production vs local development
+            let mapUrl;
+            if (window.location.hostname === 'storage.googleapis.com' || window.location.hostname.includes('googleapis.com')) {
+                // Production: Use full GCS URL
+                mapUrl = 'https://storage.googleapis.com/wanderlog-ai-frontend/assets/maps/world-map.svg';
+            } else {
+                // Local development: Use relative path
+                const basePath = window.location.pathname.startsWith('/wanderlog_ai') ? '/wanderlog_ai' : '';
+                mapUrl = `${basePath}/assets/maps/world-map.svg`;
+            }
+            console.log('[MAP] Loading map from:', mapUrl);
+            const response = await fetch(mapUrl);
             const svgText = await response.text();
             this.mapContainer.innerHTML = svgText;
             // Remove <title> and title attributes to prevent browser tooltips

@@ -1,3 +1,4 @@
+console.log("WANDERLOG UI.JS VERSION 20250712-unique-test");
 // UI Module - Handles user interface and page navigation
 class WanderLogUI {
     constructor() {
@@ -14,7 +15,7 @@ class WanderLogUI {
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         this.API_BASE_URL = isLocalhost
             ? 'http://localhost:8080/api'
-            : '/wanderlog_ai/api';
+            : 'https://us-central1-ai-test-394019.cloudfunctions.net/wanderlog_ai';
         
         this.currentPage = 'create';
         this.stories = [];
@@ -43,6 +44,7 @@ class WanderLogUI {
         
         // Flag to prevent re-initialization
         this.isInitialized = false;
+        this.countryAutocompleteInitialized = false;
         
         this.countries = [
             'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
@@ -129,10 +131,10 @@ class WanderLogUI {
 
     checkCriticalElements() {
         const criticalElements = [
-            'countryInputStep1',
-            'countryDropdownStep1',
-            'citiesContainerStep2',
-            'memoryPromptsContainerStep3'
+            'countryInput',
+            'countryDropdown',
+            'citiesContainer',
+            'memoryPromptsContainer'
         ];
         
         const missingElements = [];
@@ -205,7 +207,7 @@ class WanderLogUI {
         }
 
         // Country input for URL updates
-        const countryInput = document.getElementById('countryInputStep1');
+        const countryInput = document.getElementById('countryInput');
         if (countryInput) {
             countryInput.addEventListener('input', () => this.updateURL());
         } else {
@@ -214,6 +216,14 @@ class WanderLogUI {
 
         // Handle browser back/forward
         window.addEventListener('popstate', (e) => this.handlePopState(e));
+
+        // Synchronize between original and step-specific elements
+        this.syncElements();
+    }
+
+    syncElements() {
+        // No longer needed - we use only the visible elements
+        console.log('[UI] syncElements() - no longer needed, using only visible elements');
     }
 
     // Multi-step form navigation
@@ -230,13 +240,6 @@ class WanderLogUI {
             this.currentStep++;
             this.updateStepIndicator();
             this.showCurrentStep();
-            if (this.currentStep === 3) {
-                const tPrompt0 = performance.now();
-                this.generateMemoryPrompts().then(() => {
-                    const tPrompt1 = performance.now();
-                    console.log(`[PERF] generateMemoryPrompts took ${(tPrompt1 - tPrompt0).toFixed(1)}ms`);
-                });
-            }
         }
         const t1 = performance.now();
         console.log(`[PERF] nextStep (step ${this.currentStep}) took ${(t1 - t0).toFixed(1)}ms`);
@@ -261,7 +264,7 @@ class WanderLogUI {
         // Check if we can navigate to this step based on current progress
         if (stepNumber > this.currentStep) {
             // Only allow navigation to next step if current step is complete
-            if (this.currentStep === 1 && !document.getElementById('countryInputStep1').value.trim()) {
+            if (this.currentStep === 1 && !document.getElementById('countryInput').value.trim()) {
                 this.showMessage('Please select a country first.');
                 return;
             }
@@ -285,11 +288,6 @@ class WanderLogUI {
         this.currentStep = stepNumber;
         this.updateStepIndicator();
         this.showCurrentStep();
-        
-        // Generate memory prompts when moving to step 3
-        if (this.currentStep === 3 && this.selectedCities.length > 0) {
-            this.generateMemoryPrompts();
-        }
     }
 
     updateStepIndicator() {
@@ -335,10 +333,14 @@ class WanderLogUI {
                 }
             }
         }
+        // Ensure photo upload handlers are attached when step 1 is shown
+        if (this.currentStep === 1) {
+            this.initializePhotoUpload();
+        }
         // Only auto-load cities for step 2 if needed
         if (this.currentStep === 2) {
-            const countryInput = document.getElementById('countryInputStep1');
-            const citiesContainer = document.getElementById('citiesContainerStep2');
+            const countryInput = document.getElementById('countryInput');
+            const citiesContainer = document.getElementById('citiesContainer');
             if (countryInput && countryInput.value && (citiesContainer && citiesContainer.children.length === 0)) {
                 const country = countryInput.value.trim();
                 // Use cache if available
@@ -368,6 +370,10 @@ class WanderLogUI {
                     this.suggestCities(true);
                 }
             }
+        }
+        // Auto-generate memory prompts for step 3
+        if (this.currentStep === 3) {
+            this.generateMemoryPrompts();
         }
         // Step 4: update story display
         if (this.currentStep === 4 && this.generatedNarrative) {
@@ -469,13 +475,13 @@ class WanderLogUI {
     // Country Autocomplete
     initCountryAutocomplete() {
         // Skip if already initialized
-        if (this.isInitialized) {
+        if (this.countryAutocompleteInitialized) {
             console.log('[UI] Skipping initCountryAutocomplete - already initialized');
             return;
         }
         
-        const input = document.getElementById('countryInputStep1');
-        const dropdown = document.getElementById('countryDropdownStep1');
+        const input = document.getElementById('countryInput');
+        const dropdown = document.getElementById('countryDropdown');
         if (!input || !dropdown) {
             console.error('[UI] Country input or dropdown not found');
             return;
@@ -533,10 +539,13 @@ class WanderLogUI {
         input.addEventListener('blur', () => {
             setTimeout(() => this.prefetchCitySuggestions(), 200); // Delay to allow dropdown click
         });
+        
+        // Mark as initialized only after successful setup
+        this.countryAutocompleteInitialized = true;
     }
 
     showDropdown(countries) {
-        const dropdown = document.getElementById('countryDropdownStep1');
+        const dropdown = document.getElementById('countryDropdown');
         if (!dropdown) return;
         dropdown.innerHTML = countries.map(country => 
             `<div class="autocomplete-item" onclick="window.wanderLogApp.ui.selectCountry('${country}')">${country}</div>`
@@ -545,7 +554,7 @@ class WanderLogUI {
     }
 
     hideDropdown() {
-        const dropdown = document.getElementById('countryDropdownStep1');
+        const dropdown = document.getElementById('countryDropdown');
         if (dropdown) {
             dropdown.classList.remove('show');
         }
@@ -562,7 +571,7 @@ class WanderLogUI {
     }
 
     selectCountry(country) {
-        const input = document.getElementById('countryInputStep1');
+        const input = document.getElementById('countryInput');
         if (input) {
             input.value = country;
         }
@@ -574,7 +583,7 @@ class WanderLogUI {
     // City Suggestions
     async suggestCities(autoLoad = false) {
         console.log('[UI] suggestCities called with autoLoad:', autoLoad);
-        const country = document.getElementById('countryInputStep1').value.trim();
+        const country = document.getElementById('countryInput').value.trim();
         if (!country) {
             this.showMessage('Please enter a country name.');
             return;
@@ -653,13 +662,13 @@ class WanderLogUI {
     displayCities(cities) {
         console.log(`[UI] 🏙️ displayCities called with ${cities.length} cities:`, cities);
         
-        const container = document.getElementById('citiesContainerStep2');
+        const container = document.getElementById('citiesContainer');
         if (!container) {
-            console.error('[UI] ❌ citiesContainerStep2 element not found!');
+            console.error('[UI] ❌ citiesContainer element not found!');
             return;
         }
         
-        console.log('[UI] ✅ citiesContainerStep2 found:', container);
+        console.log('[UI] ✅ citiesContainer found:', container);
         console.log('[UI] Container current innerHTML before clear:', container.innerHTML);
         
         container.innerHTML = '';
@@ -750,7 +759,7 @@ class WanderLogUI {
         this.showLoading('Generating memory prompts for your selected cities...');
         this.updateStepProgress(3, 'loading');
         try {
-            const container = document.getElementById('memoryPromptsContainerStep3');
+            const container = document.getElementById('memoryPromptsContainer');
             if (!container) return;
             container.innerHTML = '';
             for (let i = 0; i < this.selectedCities.length; i++) {
@@ -758,7 +767,7 @@ class WanderLogUI {
                 try {
                     const api = new WanderLogAPI();
                     const tApi0 = performance.now();
-                    const data = await api.generateMemoryPrompts(city.city, document.getElementById('countryInputStep1').value);
+                    const data = await api.generateMemoryPrompts(city.city, document.getElementById('countryInput').value);
                     const tApi1 = performance.now();
                     console.log(`[PERF] API generateMemoryPrompts for city '${city.city}' took ${(tApi1 - tApi0).toFixed(1)}ms`);
                     if (data.prompts) {
@@ -784,7 +793,7 @@ class WanderLogUI {
     }
 
     displayCityPrompts(city, prompts, cityIndex) {
-        const container = document.getElementById('memoryPromptsContainerStep3');
+        const container = document.getElementById('memoryPromptsContainer');
         if (!container) return;
         
         // Enhanced safety check for city data
@@ -852,7 +861,7 @@ class WanderLogUI {
 
         try {
             const api = new WanderLogAPI();
-            const data = await api.generateMemoryPrompts(cityName, document.getElementById('countryInputStep1').value);
+            const data = await api.generateMemoryPrompts(cityName, document.getElementById('countryInput').value);
             
             if (data.prompts && data.prompts[promptIndex]) {
                 const newPrompt = data.prompts[promptIndex];
@@ -875,7 +884,7 @@ class WanderLogUI {
         const t0 = performance.now();
         // Collect user answers from all cities
         this.userAnswers = [];
-        const freeform = document.getElementById('freeformMemoryStep3');
+        const freeform = document.getElementById('freeformMemory');
         if (freeform && freeform.value.trim()) {
             this.userAnswers.push(freeform.value.trim());
         }
@@ -901,8 +910,8 @@ class WanderLogUI {
             const cityNames = this.selectedCities.map(city => city.city).join(', ');
             
             // Get date information
-            const countryMonth = document.getElementById('countryMonthStep1');
-            const countryYear = document.getElementById('countryYearStep1');
+            const countryMonth = document.getElementById('countryMonth');
+            const countryYear = document.getElementById('countryYear');
             const visitDate = (countryMonth && countryYear && countryMonth.value && countryYear.value) ? 
                 `${countryMonth.value}/${countryYear.value}` : null;
             
@@ -915,7 +924,7 @@ class WanderLogUI {
                 body: JSON.stringify({
                     action: 'generate_narrative',
                     city: cityNames,
-                    country: document.getElementById('countryInputStep1').value,
+                    country: document.getElementById('countryInput').value,
                     user_answers: this.userAnswers,
                     cities: this.selectedCities.map(city => city.city), // Pass all city names
                     story_length: this.selectedStoryLength, // Add story length parameter
@@ -961,26 +970,23 @@ class WanderLogUI {
     displayFormattedStory(narrative) {
         const editableStory = document.getElementById('editableStory');
         if (!editableStory) return;
-        // Use marked.js for robust markdown rendering
         if (window.marked) {
             editableStory.innerHTML = window.marked.parse(narrative);
         } else {
-            // Fallback: show plain text
             editableStory.textContent = narrative;
         }
         console.log('[UI] 📝 Displayed formatted story (marked.js):', narrative);
     }
     
-    // Update story details in header
+    // Update story details (fix country name)
     updateStoryDetails() {
         const storyCountry = document.getElementById('storyCountry');
         const storyCities = document.getElementById('storyCities');
-        const countryInput = document.getElementById('countryInputStep1');
-        
+        const countryInput = document.getElementById('countryInput');
         if (storyCountry && countryInput) {
+            // Use the full value, not a substring
             storyCountry.textContent = countryInput.value;
         }
-        
         if (storyCities && this.selectedCities.length > 0) {
             const cityNames = this.selectedCities.map(city => city.city).join(', ');
             storyCities.textContent = cityNames;
@@ -1056,9 +1062,14 @@ class WanderLogUI {
 
     // Manual City Addition
     addManualCity() {
-        const input = document.getElementById('manualCityInputStep2');
+        const input = document.getElementById('manualCityInput');
+        console.log('[DEBUG] manualCityInput:', input);
+        if (!input) {
+            console.error('[UI] manualCityInput not found in DOM when trying to add a city!');
+            this.showMessage('City input box not found. Please reload the page.', 'error');
+            return;
+        }
         const city = input.value.trim();
-        
         if (!city) {
             this.showMessage('Please enter a city name.');
             return;
@@ -1132,7 +1143,7 @@ class WanderLogUI {
         console.log('[UI] 🎯 Demo: Filling all memory data...');
         
         // Fill freeform memory with sample content
-        const freeformMemory = document.getElementById('freeformMemoryStep3');
+        const freeformMemory = document.getElementById('freeformMemory');
         if (freeformMemory) {
             freeformMemory.value = `Amazing trip! The food was incredible - especially the street food. The temples were breathtaking and the people were so welcoming. I loved the bustling markets and the peaceful moments by the river. This journey changed my perspective on life and travel. Can't wait to go back!`;
         }
@@ -1172,7 +1183,7 @@ class WanderLogUI {
         this.showLoading('Saving your story...');
         try {
             const storyData = {
-                country: document.getElementById('countryInputStep1').value,
+                country: document.getElementById('countryInput').value,
                 cities: this.selectedCities.map(city => city.city),
                 city: this.selectedCities[0] ? this.selectedCities[0].city : '',
                 narrative: this.generatedNarrative,
@@ -1227,25 +1238,25 @@ class WanderLogUI {
         this.uploadedPhotos = []; // Reset photos
         
         // Reset form elements
-        document.getElementById('countryInputStep1').value = '';
-        document.getElementById('countryMonthStep1').value = '';
-        document.getElementById('countryYearStep1').value = '';
-        document.getElementById('manualCityInputStep2').value = '';
-        document.getElementById('freeformMemoryStep3').value = '';
-        document.getElementById('memoryPromptsContainerStep3').innerHTML = '';
-        document.getElementById('citiesContainerStep2').innerHTML = '';
+        document.getElementById('countryInput').value = '';
+        document.getElementById('countryMonth').value = '';
+        document.getElementById('countryYear').value = '';
+        document.getElementById('manualCityInput').value = '';
+        document.getElementById('freeformMemory').value = '';
+        document.getElementById('memoryPromptsContainer').innerHTML = '';
+        document.getElementById('citiesContainer').innerHTML = '';
         
         // Reset step indicator
         this.updateStepIndicator();
         this.showCurrentStep();
-        const photoPreview = document.getElementById('photoPreviewStep1');
+        const photoPreview = document.getElementById('photoPreview');
         if (photoPreview) photoPreview.innerHTML = '';
     }
 
     // Get Visit Date
     getVisitDate() {
-        const month = document.getElementById('countryMonthStep1').value;
-        const year = document.getElementById('countryYearStep1').value;
+        const month = document.getElementById('countryMonth').value;
+        const year = document.getElementById('countryYear').value;
         return month && year ? `${month}/${year}` : null;
     }
 
@@ -1310,7 +1321,7 @@ class WanderLogUI {
         
         // Set all URL parameters FIRST, then show the step
         if (country) {
-            const countryInput = document.getElementById('countryInputStep1');
+            const countryInput = document.getElementById('countryInput');
             if (countryInput) {
                 countryInput.value = country;
                 countryInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1356,7 +1367,7 @@ class WanderLogUI {
             url.searchParams.delete('page');
             url.searchParams.set('step', this.currentStep.toString());
             
-            const countryInput = document.getElementById('countryInputStep1');
+            const countryInput = document.getElementById('countryInput');
             if (countryInput && countryInput.value) {
                 url.searchParams.set('country', countryInput.value);
             }
@@ -1412,8 +1423,8 @@ class WanderLogUI {
             return;
         }
         console.log('[UI] Initializing photo upload...');
-        // Add drag and drop functionality
-        const photoUploadSection = document.getElementById('photoUploadSectionStep1');
+        // Add drag and drop functionality to #photoUploadSection only
+        const photoUploadSection = document.getElementById('photoUploadSection');
         if (photoUploadSection) {
             photoUploadSection.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -1432,8 +1443,11 @@ class WanderLogUI {
                 this.handlePhotoUpload({ target: { files } });
             });
         }
+        // Prevent default dragover/drop on the whole document to stop browser from opening images
+        document.body.addEventListener('dragover', (e) => e.preventDefault());
+        document.body.addEventListener('drop', (e) => e.preventDefault());
         // Attach file input change event for file picker
-        const fileInput = document.getElementById('photoInputStep1');
+        const fileInput = document.getElementById('photoInput');
         if (fileInput) {
             fileInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
         }
@@ -1442,8 +1456,12 @@ class WanderLogUI {
 
     // Update photo preview area with delete buttons
     updatePhotoPreview() {
-        const photoPreview = document.getElementById('photoPreviewStep1');
-        if (!photoPreview) return;
+        const photoPreview = document.getElementById('photoPreview');
+        console.log('[DEBUG] updatePhotoPreview called. uploadedPhotos:', this.uploadedPhotos);
+        if (!photoPreview) {
+            console.warn('[DEBUG] photoPreview not found in updatePhotoPreview');
+            return;
+        }
         photoPreview.innerHTML = '';
         this.uploadedPhotos.forEach((photoData, idx) => {
             const imgWrapper = document.createElement('div');
@@ -1497,8 +1515,12 @@ class WanderLogUI {
     // Handle photo upload
     handlePhotoUpload(event) {
         const files = event.target.files;
-        const photoPreview = document.getElementById('photoPreviewStep1');
-        if (!photoPreview) return;
+        console.log('[DEBUG] handlePhotoUpload called. Files:', files);
+        const photoPreview = document.getElementById('photoPreview');
+        if (!photoPreview) {
+            console.warn('[DEBUG] photoPreview not found');
+            return;
+        }
         // Limit to 3 photos
         if (this.uploadedPhotos.length + files.length > 3) {
             this.showMessage('You can only add up to 3 photos per story.');
@@ -1507,6 +1529,7 @@ class WanderLogUI {
         Array.from(files).forEach((file) => {
             const reader = new FileReader();
             reader.onload = (e) => {
+                console.log('[DEBUG] FileReader loaded:', e.target.result.slice(0, 100));
                 if (this.uploadedPhotos.length < 3) {
                     this.uploadedPhotos.push(e.target.result);
                     this.updatePhotoPreview();
@@ -1897,7 +1920,7 @@ class WanderLogUI {
     addToCountry(country) {
         // Navigate to create page and pre-fill the country
         this.showPage('create');
-        const countryInput = document.getElementById('countryInputStep1');
+        const countryInput = document.getElementById('countryInput');
         if (countryInput) {
             countryInput.value = country;
         }
@@ -2032,7 +2055,7 @@ class WanderLogUI {
         }
         
         if (country) {
-            const countryInput = document.getElementById('countryInputStep1');
+            const countryInput = document.getElementById('countryInput');
             if (countryInput) {
                 countryInput.value = country;
             }

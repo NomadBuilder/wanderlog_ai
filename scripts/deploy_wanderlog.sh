@@ -9,7 +9,7 @@ gcloud functions deploy wanderlog_ai \
   --trigger-http \
   --allow-unauthenticated \
   --region us-central1 \
-  --source . \
+  --source backend \
   --entry-point wanderlog_ai
 
 echo "✅ WanderLog AI deployed successfully!"

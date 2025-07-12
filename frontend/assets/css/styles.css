@@ -2843,3 +2843,7 @@ mark {
   color: white !important;
   text-align: center;
 }
+
+footer .footer-copyright {
+  color: #fff !important;
+}

@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Backend API URL
-BACKEND_URL = 'http://localhost:8080'
+BACKEND_URL = 'https://us-central1-ai-test-394019.cloudfunctions.net/wanderlog_ai'
 
 @app.route('/')
 def index():

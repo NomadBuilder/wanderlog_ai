@@ -18,7 +18,7 @@ class SVGMapProcessor:
         self.country_elements = {}
         
     def load_svg(self, svg_path: str = "world-map.svg") -> bool:
-        """Load SVG file content"""
+        """Load SVG file content from file path"""
         try:
             with open(svg_path, 'r', encoding='utf-8') as file:
                 self.svg_content = file.read()
@@ -29,6 +29,16 @@ class SVGMapProcessor:
             return False
         except Exception as e:
             print(f"❌ Error loading SVG: {e}")
+            return False
+    
+    def load_svg_from_content(self, svg_content: str) -> bool:
+        """Load SVG content directly from string"""
+        try:
+            self.svg_content = svg_content
+            self._extract_country_elements()
+            return True
+        except Exception as e:
+            print(f"❌ Error loading SVG from content: {e}")
             return False
     
     def _extract_country_elements(self):

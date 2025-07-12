@@ -19,12 +19,24 @@ class MapIntegration:
         self.stories_cache = []
         
     def initialize_map(self, svg_path: str = "world-map.svg") -> bool:
-        """Initialize the map system"""
+        """Initialize the map system from file path"""
         print("🗺️ Initializing Map System...")
         
         # Load SVG map
         if not self.svg_processor.load_svg(svg_path):
             print("❌ Failed to initialize map - SVG not found")
+            return False
+        
+        print(f"✅ Map initialized with {len(self.svg_processor.country_elements)} countries")
+        return True
+    
+    def initialize_map_from_content(self, svg_content: str) -> bool:
+        """Initialize the map system from SVG content"""
+        print("🗺️ Initializing Map System from content...")
+        
+        # Load SVG map from content
+        if not self.svg_processor.load_svg_from_content(svg_content):
+            print("❌ Failed to initialize map from content")
             return False
         
         print(f"✅ Map initialized with {len(self.svg_processor.country_elements)} countries")

@@ -53,7 +53,9 @@ class WanderLogMap {
 
     async loadMap() {
         try {
-            const response = await fetch('/assets/maps/world-map.svg');
+            // Get the correct base path for production vs local development
+            const basePath = window.location.pathname.startsWith('/wanderlog_ai') ? '/wanderlog_ai' : '';
+            const response = await fetch(`${basePath}/assets/maps/world-map.svg`);
             const svgText = await response.text();
             this.mapContainer.innerHTML = svgText;
             // Remove <title> and title attributes to prevent browser tooltips
